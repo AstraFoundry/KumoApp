@@ -130,14 +130,18 @@ public struct KumoServiceManager: Sendable {
         return "TUN requires Kumo Helper or a privileged Kumo process. Installing the helper shows a macOS administrator authorization prompt, not a VPN configuration prompt."
     }
 
-    private func helperExecutableCandidate() throws -> URL {
-        let bundle = Bundle.main
-        let executableDirectory = bundle.executableURL?.deletingLastPathComponent()
-        let productDirectory = bundle.bundleURL.deletingLastPathComponent()
-        let workingDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let candidates = [
-            bundle.bundleURL.appendingPathComponent("Contents/MacOS/KumoService"),
-            bundle.bundleURL.appendingPathComponent("Contents/Helpers/KumoService"),
+    static func helperExecutableCandidates(
+        bundleURL: URL,
+        executableURL: URL?,
+        workingDirectory: URL,
+        installedHelperURL: URL
+    ) -> [URL] {
+        let executableDirectory = executableURL?.deletingLastPathComponent()
+        let productDirectory = bundleURL.deletingLastPathComponent()
+        return [
+            bundleURL.appendingPathComponent("Contents/MacOS/KumoService"),
+            bundleURL.appendingPathComponent("Contents/Helpers/KumoService"),
+            executableDirectory?.deletingLastPathComponent().appendingPathComponent("MacOS/KumoService"),
             productDirectory.appendingPathComponent("KumoService"),
             executableDirectory?.appendingPathComponent("KumoService"),
             workingDirectory.appendingPathComponent("KumoService"),
@@ -145,8 +149,17 @@ public struct KumoServiceManager: Sendable {
             workingDirectory.appendingPathComponent(".build/release/KumoService"),
             workingDirectory.appendingPathComponent("build/Build/Products/Debug/KumoService"),
             workingDirectory.appendingPathComponent("build/Build/Products/Release/KumoService"),
-            paths.serviceExecutableFile
+            installedHelperURL
         ].compactMap { $0 }
+    }
+
+    private func helperExecutableCandidate() throws -> URL {
+        let candidates = Self.helperExecutableCandidates(
+            bundleURL: Bundle.main.bundleURL,
+            executableURL: Bundle.main.executableURL,
+            workingDirectory: URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+            installedHelperURL: paths.serviceExecutableFile
+        )
 
         if let candidate = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) {
             return candidate
