@@ -38,6 +38,7 @@ export function CoreToggleButton({ size = "sm" }: { size?: "sm" | "default" | "l
     <>
       <Button
         className="min-w-22"
+        data-e2e="core-toggle"
         disabled={!status || transitioning}
         loading={busy}
         onClick={toggle}

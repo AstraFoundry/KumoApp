@@ -38,7 +38,7 @@ export function usePortConflicts(): { ask: (c: PortConflict[]) => void; dialog: 
 
   const dialog = (
     <AlertDialog onOpenChange={(open) => !open && setConflicts([])} open={conflicts.length > 0}>
-      <AlertDialogPopup>
+      <AlertDialogPopup data-e2e="port-conflict">
         <AlertDialogHeader>
           <AlertDialogTitle>{t.portConflictTitle()}</AlertDialogTitle>
           <AlertDialogDescription render={<div />}>
@@ -58,7 +58,7 @@ export function usePortConflicts(): { ask: (c: PortConflict[]) => void; dialog: 
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="ghost" />}>{t.cancel()}</AlertDialogClose>
-          <Button loading={busy} onClick={resolve}>
+          <Button data-e2e="use-free-ports" loading={busy} onClick={resolve}>
             {t.portConflictUseFree()}
           </Button>
         </AlertDialogFooter>

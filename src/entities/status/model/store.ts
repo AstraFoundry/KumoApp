@@ -31,7 +31,16 @@ const quitting = store(false);
 const HISTORY = 60;
 
 if (isMyGo()) {
-  void Runtime.status().then((s) => status.get() ?? status.set(s));
+  // Asks until Go answers: a call made while the app is still starting
+  // can fail or go unanswered.
+  const load = () => {
+    if (status.get()) return;
+    Runtime.status()
+      .then((s) => status.get() ?? status.set(s))
+      .catch(() => {});
+    setTimeout(load, 1000);
+  };
+  load();
   events.status.on((s) => status.set(s));
   events.traffic.on((t) => {
     const next = traffic.get().slice(-(HISTORY - 1));

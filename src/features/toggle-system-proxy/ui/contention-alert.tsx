@@ -37,7 +37,7 @@ export function ContentionAlert() {
   }
 
   return (
-    <Alert variant="warning">
+    <Alert data-e2e="contention" variant="warning">
       <ShieldAlertIcon aria-hidden="true" />
       <AlertTitle>{t.contentionTitle()}</AlertTitle>
       <AlertDescription>{holder ? t.contentionBodyHolder(holder) : t.contentionBody()}</AlertDescription>
