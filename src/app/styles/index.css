@@ -5,6 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Kumo's blue, from the app icon. */
+  --brand: oklch(0.58 0.2 258);
+  --brand-foreground: oklch(0.5 0.19 258);
+  --brand-soft: oklch(0.58 0.2 258 / 8%);
+  /* Emil Kowalski's curves: a strong ease-out for things that enter, a
+     strong ease-in-out for things that move. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --accent: --alpha(var(--color-black) / 4%);
   --accent-foreground: var(--color-neutral-800);
   --background: var(--color-white);
@@ -50,6 +59,9 @@
 }
 
 .dark {
+  --brand: oklch(0.68 0.17 258);
+  --brand-foreground: oklch(0.76 0.13 258);
+  --brand-soft: oklch(0.68 0.17 258 / 14%);
   --accent: --alpha(var(--color-white) / 4%);
   --accent-foreground: var(--color-neutral-100);
   --background: color-mix(in srgb, var(--color-neutral-950) 95%, var(--color-white));
@@ -93,7 +105,18 @@
   --sidebar-ring: var(--color-neutral-400);
 }
 
+@theme {
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-heading: "Inter Variable", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "JetBrains Mono", Consolas, monospace;
+}
+
 @theme inline {
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
+    --color-brand-soft: var(--brand-soft);
+    --ease-out-strong: var(--ease-out);
+    --ease-in-out-strong: var(--ease-in-out);
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -110,9 +133,6 @@
     --color-sidebar-primary: var(--sidebar-primary);
     --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
     --color-sidebar-ring: var(--sidebar-ring);
-    --font-heading: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-    --font-mono: var(--font-mono, ui-monospace, monospace);
-    --font-sans: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
@@ -235,4 +255,93 @@
   code, kbd, samp, pre {
     font-family: var(--font-mono);
   }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+    /* A desktop app: text is not selectable unless it is content. */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+  input,
+  textarea,
+  [data-selectable],
+  pre,
+  code {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+/* Buttons answer a press at once (Emil: scale 0.97 on :active). Keyboard
+   activation does not animate. */
+[data-slot="button"],
+[data-slot="toggle"] {
+  transition-property: box-shadow, background-color, border-color, color, transform;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+}
+[data-slot="button"]:active:not(:disabled),
+[data-slot="toggle"]:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Topology canvas: quiet gray relations, the brand color for the path
+   traffic takes now, dashes for members the core decides, red for broken
+   references. */
+.kumo-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: color-mix(in srgb, var(--foreground) 16%, transparent);
+  --xy-edge-stroke-width: 1.25;
+}
+.kumo-flow .react-flow__node {
+  cursor: pointer;
+}
+.kumo-edge path,
+.kumo-legend-member line {
+  stroke: color-mix(in srgb, var(--foreground) 16%, transparent);
+  stroke-width: 1.25;
+  transition: stroke 150ms var(--ease-out), opacity 150ms var(--ease-out);
+}
+.kumo-edge-dynamic path,
+.kumo-legend-dynamic line {
+  stroke-dasharray: 4 4;
+  stroke: color-mix(in srgb, var(--foreground) 14%, transparent);
+  stroke-width: 1.25;
+}
+.kumo-edge.is-path path {
+  stroke: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+.kumo-edge.is-active path,
+.kumo-legend-active line {
+  stroke: var(--brand);
+  stroke-width: 2;
+}
+.kumo-edge.is-broken path,
+.kumo-legend-broken line {
+  stroke: var(--destructive);
+  stroke-dasharray: 3 3;
+  stroke-width: 1.5;
+}
+.kumo-edge.is-dimmed {
+  opacity: 0.15;
 }

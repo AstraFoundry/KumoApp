@@ -109,3 +109,6 @@ func New(deps Dependencies) *Kumo {
 
 // Paths are where this Kumo keeps its files.
 func (k *Kumo) Paths() paths.Paths { return k.deps.Paths }
+
+// Runtime reads the stored runtime.
+func (k *Kumo) Runtime() (core.Runtime, error) { return k.deps.Runtime.Load() }
