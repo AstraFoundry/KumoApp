@@ -1,71 +1,57 @@
 ---
 name: kumo-cli
-description: Drive Kumo from coding agents and automation through the `kumo` command-line interface. Use when starting, stopping, inspecting, configuring, or troubleshooting Kumo, Mihomo runtime state, profiles, proxies, system proxy, TUN, service mode, or Kumo agent skill installation.
+description: Drive Kumo from coding agents and automation through the `kumo` command-line interface. Use when starting, stopping, inspecting, configuring, or troubleshooting Kumo and its Mihomo core — profiles, proxies, rules, connections, overrides, DNS, sniffer, system proxy, TUN, the routing topology, or Kumo's agent skill installation.
 ---
 
 # Kumo CLI
 
 ## Quick Start
 
-Run `kumo doctor --json` first when diagnosing state. Use `--json` whenever parsing output.
-Use the installed `kumo` command, which should resolve to `/usr/local/bin/kumo`
-and then to `Kumo.app/Contents/Helpers/kumo`. `swift run kumo` is only for
-source-tree development checks.
-
-## When to Use
-
-- Control Kumo lifecycle, mode, profiles, proxies, system proxy, TUN, or service mode.
-- Inspect current runtime state before changing configuration.
-- Install, update, or inspect Kumo's bundled agent skills.
+Run `kumo doctor --json` first when diagnosing state. Add `--json` to every
+command whose output you read. `kumo` is the Kumo app's own executable,
+linked onto PATH from Kumo › Agents; it shares state with the running app.
 
 ## Output Contract
 
-- JSON responses use `{ "ok": true|false, "data": ..., "error": ... }` and
-  always include all three keys.
-- Exit code `0` means success.
-- Exit code `1` means failure; read `error` when `ok` is false.
-- Prefer stable command names and JSON fields over parsing human-readable output.
-- `--json` stdout is always plain JSON with no ANSI color, progress, or logs.
-- Diagnostics and log output go to stderr in text mode.
+- `--json` prints `{ "ok": true|false, "data": ..., "error": "message" | null }`, always all three keys, no color or logs.
+- Exit code `0` success, `1` failure (read `error`), `2` usage error.
+- Prefer JSON fields over human-readable output.
 
 ## Discoverability
 
-- `kumo --help` or `kumo -h` shows common commands.
-- `kumo -l` shows long command usage.
-- `kumo <command> -h` and `kumo help <term>` show focused help.
-- `kumo completion zsh|bash|fish` emits shell completion scripts.
+- `kumo help` shows common commands; `kumo -l` shows every command's usage.
+- `kumo <command> -h` shows focused help.
+- `kumo prompt <page> [intent]` prints a step-by-step recipe for a task, for
+  pages such as `overview`, `profiles`, `proxies`, `topology`, `dns`, `tun`.
+- `kumo completion zsh|bash|fish` emits shell completion.
 
-## Command Workflow
+## Command Map
 
-1. Start with `kumo doctor --json` for a broad snapshot.
-2. Use focused read commands such as `kumo status --json`, `kumo proxies --json`, or `kumo service status --json`.
-3. Use `--dry-run` before commands that can change macOS settings or installed skills.
-4. After a write command, re-run the narrow status command to verify the result.
+| Need | Commands |
+| --- | --- |
+| State | `status`, `doctor` |
+| Lifecycle | `start [--resolve-ports]`, `stop`, `restart`, `mode rule\|global\|direct` |
+| Nodes | `proxies [--group]`, `select <group> <node>`, `delay <group>`, `delay --node <name>` |
+| Profiles | `profile list\|current\|use\|import\|refresh\|show\|delete` |
+| Overrides | `override list\|add\|show\|enable\|disable\|delete\|order` |
+| Inspect | `connections`, `rules`, `providers`, `logs [--follow]`, `topology [--issues]` |
+| System | `sysproxy status\|on\|off\|services\|set`, `tun status\|on\|off\|grant` |
+| Config | `dns show\|on\|off`, `sniffer show\|on\|off`, `config show\|path\|set`, `core status\|list\|use\|auto\|install` |
+| Skills | `skills status\|install\|uninstall [--agent <name>\|all] [--scope global\|project]` |
 
-## Skill Installation Commands
+## Workflow
 
-- `kumo skills status --json`
-- `kumo skills status --agent cursor --json`
-- `kumo skills install --agent codex --dry-run --json`
-- `kumo skills install --agent all --scope global --json`
-- `kumo skills uninstall --agent cursor --scope global --dry-run --json`
-
-Supported agents are `cursor`, `claude`, `codex`, `gemini`, `agents`, and `all` where documented.
-`codex` and `gemini` do not support project scope.
-
-## Logging Commands
-
-- `kumo logs path`
-- `kumo logs cli --limit 5`
-- `kumo logs clean --dry-run --json`
-
-Use `--loglevel <silent|error|warn|notice|http|info|verbose|silly>` to adjust
-diagnostic verbosity. Prefer `--silent --json` for automation that only needs
-machine-readable results.
+1. Read first: `kumo status --json` or `kumo doctor --json`.
+2. Use `--dry-run` before commands that change system settings or installed skills.
+3. After a write, re-run the narrow read command to verify.
+4. When `start` reports a port conflict, tell the user who holds the port; only
+   use `--resolve-ports` when they agree to move Kumo to a free port.
 
 ## Safety Rules
 
-- Do not edit generated runtime YAML unless the user explicitly asks for raw file changes.
-- Prefer `kumo` or the Kumo app over direct writes to Kumo state files.
-- Do not pass `--force` to skill installation unless the user intends to replace an existing skill directory.
-- When working inside the Kumo repository, use `docs/interfaces/cli-agent-control.md` for the detailed CLI contract.
+- Never kill another program to free a port, and never turn off a system proxy
+  that another app set — Kumo releases only the proxy it set.
+- Don't edit Kumo's state files or the generated config; use `kumo` commands.
+- `tun grant` asks for an administrator password: run it only when the user asks.
+- Don't pass `--force` to skill installation unless the user wants an existing
+  skill directory replaced.

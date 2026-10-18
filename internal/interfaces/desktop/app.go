@@ -24,7 +24,7 @@ const (
 	RepositoryURL = "https://github.com/AstraFoundry/KumoApp"
 	TeamURL       = "https://github.com/AstraFoundry"
 	IssuesURL     = RepositoryURL + "/issues/new"
-	License       = "GPL-3.0"
+	License       = "AGPL-3.0"
 	LicenseURL    = RepositoryURL + "/blob/main/LICENSE"
 	MihomoURL     = "https://github.com/MetaCubeX/mihomo"
 )

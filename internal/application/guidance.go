@@ -201,7 +201,7 @@ func Prompt(page, intent string) (string, error) {
 	fmt.Fprintf(&b, "Goal: %s.\n\n", chosen.Goal)
 	b.WriteString("Use Kumo's command-line tool, `kumo`, which controls the Kumo app and its Mihomo core on this computer.\n")
 	b.WriteString("- Add --json to every command and read `ok`, `data` and `error` from the result; exit code 0 is success.\n")
-	b.WriteString("- If `kumo` is not on PATH, ask me to install it from Kumo › Settings, or run it from the app bundle.\n")
+	b.WriteString("- If `kumo` is not on PATH, ask me to install it from Kumo › Agents.\n")
 	b.WriteString("- Run `kumo <command> -h` when unsure of a command's options. Do not edit Kumo's files directly.\n\n")
 	b.WriteString("Steps:\n")
 	for n, step := range chosen.Steps {

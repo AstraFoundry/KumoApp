@@ -28,4 +28,4 @@ jobs:
               > /tmp/release.json
             export RELEASE_JSON=/tmp/release.json
           fi
-          python3 Scripts/telegram_release_notify.py
+          python3 scripts/telegram_release_notify.py

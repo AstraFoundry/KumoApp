@@ -41,5 +41,4 @@ Decouple DNS and Sniffer from TUN into independent runtime domains:
 
 ## Related
 
-- `docs/core/dns-and-sniffer-configuration.md`
-- `docs/roadmap/sparkle-parity-roadmap.md`
+- `docs/core/profiles-runtime-configuration.md`

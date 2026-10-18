@@ -2998,11 +2998,11 @@ func (msgs Messages) CoreLogLevel() string {
 	return Catalog.Format(msgs.locale, "coreLogLevel", nil)
 }
 
-// CoreMihomoHint says "The binary Kumo runs. Automatic picks the newest one it finds."
+// CoreMihomoHint says "The binary Kumo runs. Automatic prefers the one Kumo downloaded."
 // in the language the app shows.
 func CoreMihomoHint() string { return In(i18n.Locale()).CoreMihomoHint() }
 
-// CoreMihomoHint says "The binary Kumo runs. Automatic picks the newest one it finds."
+// CoreMihomoHint says "The binary Kumo runs. Automatic prefers the one Kumo downloaded."
 // in the language of msgs.
 func (msgs Messages) CoreMihomoHint() string {
 	return Catalog.Format(msgs.locale, "coreMihomoHint", nil)
@@ -3598,11 +3598,11 @@ func (msgs Messages) OverrideContent() string {
 	return Catalog.Format(msgs.locale, "overrideContent", nil)
 }
 
-// OverrideDialogHint says "YAML merges into every profile. JavaScript gets the config as `config` and returns it."
+// OverrideDialogHint says "YAML merges into every profile. JavaScript defines main(config) and returns the config."
 // in the language the app shows.
 func OverrideDialogHint() string { return In(i18n.Locale()).OverrideDialogHint() }
 
-// OverrideDialogHint says "YAML merges into every profile. JavaScript gets the config as `config` and returns it."
+// OverrideDialogHint says "YAML merges into every profile. JavaScript defines main(config) and returns the config."
 // in the language of msgs.
 func (msgs Messages) OverrideDialogHint() string {
 	return Catalog.Format(msgs.locale, "overrideDialogHint", nil)

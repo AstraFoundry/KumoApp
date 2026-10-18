@@ -1,97 +1,60 @@
 # Testing and Quality
 
-## Current Tests
+## Commands
 
-The first test suite covers:
+| Command | Checks |
+| --- | --- |
+| `make test` | `go vet` and `go test ./...`: domain rules (overrides, runtime config, system proxy ownership, topology, countries), the JS override runner |
+| `KUMO_TEST_MIHOMO=<mihomo> go test ./internal/application` | lifecycle simulations against a real Mihomo, with a file-backed system proxy |
+| `make lint` | TypeScript (`tsc --noEmit`), FSD layering (`scripts/check-fsd.mjs`), message catalogs (`scripts/check-i18n.mjs`) |
+| `make e2e MIHOMO=<mihomo>` | the built Linux app driven through its real window (`scripts/e2e/lifecycle.sh`) |
 
-- Runtime config generation.
-- Core state persistence.
-- System proxy command construction in dry-run mode.
-- Mihomo controller response mapping with mocked URL loading.
-- Backup export/import round trips.
-- Service request signing.
-- CLI argument parsing, JSON envelope stability, color/log rendering rules, and
-  npm-style help behavior.
+CI (`build-release.yml`, job *Test*) runs generate, Go vet/test, typecheck,
+FSD and message checks before any build.
 
-These tests target `KumoCoreKit` because that layer carries the most important shared behavior.
+## Lifecycle Simulations
 
-## Verification Commands
+`internal/application/lifecycle_sim_test.go` covers: start, select and stop;
+the system proxy following the core; a takeover not being clobbered;
+reclaim; a proxy turned off elsewhere; a port conflict and its resolution;
+a crashed core; adopting a CLI-started core and shutting it down; a stale
+pid that is not Mihomo surviving; a broken profile; switching profiles
+without a restart and a rejected profile keeping the core running;
+concurrent starts; and shutdown.
 
-Use:
+## End-to-End Lifecycle Test
 
-```bash
-swift build --product kumo
-swift test
-.build/debug/kumo --help
-.build/debug/kumo status --json
-.build/debug/kumo skills install --agent codex --scope global --dry-run --json
-```
+`scripts/e2e/lifecycle.sh <mihomo> [app]` needs Xvfb, `dbus-run-session` and
+WebKitGTK. It runs the app with `KUMO_HOME`, `KUMO_SYSTEM_PROXY=file:…` and
+`KUMO_E2E_DRIVER=<dir>` (the app evaluates `cmd.js` in its page and writes
+`out.json`), and checks:
 
-Do not start a development server. This project is a Swift package, not a web app.
-For user-facing release checks, prefer the bundled helper at
-`Kumo.app/Contents/Helpers/kumo` and the `/usr/local/bin/kumo` symlink over
-`swift run kumo`.
+1. Start from the UI → core runs, the system proxy points at Kumo.
+2. Quit (SIGTERM) → core stopped, proxy cleared.
+3. SIGKILL → the guardian stops the core and clears the proxy.
+4. Another app takes the proxy over → the alert shows; quitting leaves that
+   proxy in place.
+5. Another program holds the mixed port → the dialog names it, nothing
+   starts until *Use free ports*, then the core runs on the next free port.
 
-## Test Strategy
+## Test Seams
 
-Prioritize tests that do not mutate real system state:
+| Variable | Effect |
+| --- | --- |
+| `KUMO_HOME` | data directory |
+| `KUMO_SYSTEM_PROXY=file:<path>` | system proxy kept in a JSON file shared by all processes |
+| `KUMO_MIHOMO_PATH` | core to use |
+| `KUMO_E2E_DRIVER` | directory through which tests drive the window |
+| `MYGO_LOCALE` | force the UI language |
 
-- Use temporary application support directories.
-- Use dry-run for system proxy commands.
-- Mock controller responses before testing live Mihomo APIs.
-- Avoid tests that require a real network subscription.
+## Manual Checklist (macOS)
 
-## Areas That Need More Coverage
-
-- Profile import and remote refresh errors.
-- Missing core path errors.
-- UI store behavior.
-- Future Unix socket transport.
-- Exact system proxy restore from snapshots.
-- App update manifest and checksum flows.
-
-## Quality Rules
-
-- Keep `KumoCoreKit` independent from SwiftUI.
-- Keep command execution isolated.
-- Use explicit errors instead of generic failures.
-- Keep advanced features behind advanced UI.
-- Prefer small files grouped by domain responsibility.
-
-## Manual QA Checklist
-
-- `kumo status --json` returns valid JSON.
-- `kumo --help`, `kumo -l`, `kumo help json`, and `kumo completion zsh` return
-  npm-style discoverability output.
-- `kumo status --color never` contains no ANSI escapes, and `kumo status --json`
-  remains plain JSON even when `--color always` is supplied.
-- `kumo status --silent` succeeds without successful text output.
-- `kumo doctor --timing` writes timing diagnostics without polluting JSON output.
-- `kumo logs cli --limit 5` and `kumo logs clean --dry-run --json` operate on
-  CLI debug logs without touching runtime logs.
-- Missing Mihomo core shows a clear error.
-- Empty profile still generates a safe direct config.
-- System proxy dry-run prints the expected commands.
-- SwiftUI window opens with Overview selected.
-- Settings opens with Cmd+,.
-- Inspect search fields remain available when a query returns no matches.
-- Core runtime and System Proxy settings only commit after the user applies staged edits.
-- TUN helper uninstall asks for confirmation before removing the service.
-- Menu bar status item exposes start, stop, mode switching, refresh, profiles, proxy groups, and system proxy controls.
-- App updates check the default GitHub Releases feed when no manifest override is set.
-- App update DMG downloads fail closed on SHA-256 mismatch and report a clear error when the current app location is not writable.
-- `kumo doctor --json` reports status, profile, and core candidate information.
-- `kumo backup export <path> --json` creates a manifest-backed backup directory.
-- `kumo substore status --json` reports enabled state, frontend/backend runtime
-  state, resource version, and local URL without launching a dev server.
-
-## Localization QA Checklist
-
-- Settings → General shows the **Appearance** section with a Language dropdown.
-- The dropdown contains **System Default** plus every language compiled into the app resource bundles (currently 18 languages including `en`, `zh-Hans`, `zh-Hant`, `ja`, `ko`, `de`, `fr`, `es`, and others).
-- Selecting a language triggers the **Restart Required** prompt.
-- Clicking **Restart Now** terminates and relaunches the app.
-- After restart, the app UI renders in the selected language (Settings labels, sidebar destinations, toolbar actions, mode names, About view, and menu bar status item).
-- Selecting **System Default** removes `AppleLanguages` and the app follows macOS system language after restart.
-- `preferences.json` contains `appLanguage` as a BCP-47 string (or `null`) after a change.
-- String Catalog entries exist for all user-facing labels added in the same change set.
+- First run: Setup steps, skip, finish with and without starting.
+- Start/stop from the window and the tray; mode switch; node selection.
+- System proxy in System Settings › Network follows the core; another app
+  (e.g. Surge) taking it over shows the alert and is left alone on quit.
+- TUN: grant, turn on, traffic flows; turn off.
+- Quit with Cmd+Q and from the tray; force-quit in Activity Monitor → proxy
+  cleared and core gone within a second.
+- `kumo status` from Terminal while the app runs.
+- Light and dark appearance; English and Simplified Chinese.

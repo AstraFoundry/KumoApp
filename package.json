@@ -9,7 +9,9 @@
     "dev:web": "vite",
     "build:web": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "lint:fsd": "node scripts/check-fsd.mjs"
+    "lint:fsd": "node scripts/check-fsd.mjs",
+    "lint:i18n": "node scripts/check-i18n.mjs",
+    "test:e2e": "scripts/e2e/lifecycle.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

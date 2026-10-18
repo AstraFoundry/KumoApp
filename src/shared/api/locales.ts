@@ -1186,7 +1186,7 @@ export interface Messages {
    */
   coreLogLevel(): string;
   /**
-   * `The binary Kumo runs. Automatic picks the newest one it finds.`
+   * `The binary Kumo runs. Automatic prefers the one Kumo downloaded.`
    */
   coreMihomoHint(): string;
   /**
@@ -1426,7 +1426,7 @@ export interface Messages {
    */
   overrideContent(): string;
   /**
-   * `YAML merges into every profile. JavaScript gets the config as \`config\` and returns it.`
+   * `YAML merges into every profile. JavaScript defines main(config) and returns the config.`
    */
   overrideDialogHint(): string;
   /**
@@ -2918,7 +2918,7 @@ const catalog = createCatalog<Messages>({
       "coreInstallFailed": "Couldn't download Mihomo",
       "coreInstalled": "Mihomo {version} installed",
       "coreLogLevel": "Log level",
-      "coreMihomoHint": "The binary Kumo runs. Automatic picks the newest one it finds.",
+      "coreMihomoHint": "The binary Kumo runs. Automatic prefers the one Kumo downloaded.",
       "coreMissing": "No Mihomo found. Download one or choose a file.",
       "coreMixedPortHint": "HTTP and SOCKS on one port.",
       "corePorts": "Ports",
@@ -2978,7 +2978,7 @@ const catalog = createCatalog<Messages>({
       "logsWarning": "Warning",
       "overrideApplied": "Apply override",
       "overrideContent": "Content",
-      "overrideDialogHint": "YAML merges into every profile. JavaScript gets the config as `config` and returns it.",
+      "overrideDialogHint": "YAML merges into every profile. JavaScript defines main(config) and returns the config.",
       "overrideDown": "Move down",
       "overrideEdit": "Edit Override",
       "overrideFailed": "Couldn't save the override",
@@ -3441,7 +3441,7 @@ const catalog = createCatalog<Messages>({
       "coreInstallFailed": "无法下载 Mihomo",
       "coreInstalled": "已安装 Mihomo {version}",
       "coreLogLevel": "日志级别",
-      "coreMihomoHint": "Kumo 运行的二进制文件。自动模式会选择找到的最新版本。",
+      "coreMihomoHint": "Kumo 运行的二进制文件。自动模式优先使用 Kumo 下载的版本。",
       "coreMissing": "未找到 Mihomo。请下载或选择一个文件。",
       "coreMixedPortHint": "HTTP 与 SOCKS 共用一个端口。",
       "corePorts": "端口",
@@ -3501,7 +3501,7 @@ const catalog = createCatalog<Messages>({
       "logsWarning": "警告",
       "overrideApplied": "应用覆写",
       "overrideContent": "内容",
-      "overrideDialogHint": "YAML 会合并到每个配置。JavaScript 以 `config` 接收配置并返回结果。",
+      "overrideDialogHint": "YAML 会合并到每个配置。JavaScript 需定义 main(config) 并返回配置。",
       "overrideDown": "下移",
       "overrideEdit": "编辑覆写",
       "overrideFailed": "无法保存覆写",

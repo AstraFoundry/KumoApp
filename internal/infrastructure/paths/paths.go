@@ -31,32 +31,23 @@ func (p Paths) join(parts ...string) string {
 	return filepath.Join(append([]string{p.Root}, parts...)...)
 }
 
-func (p Paths) Profiles() string          { return p.join("profiles") }
-func (p Paths) ProfileMetadata() string   { return p.join("profiles", "profiles-metadata.json") }
-func (p Paths) CurrentProfile() string    { return p.join("profiles", "current.txt") }
-func (p Paths) Overrides() string         { return p.join("overrides") }
-func (p Paths) OverrideMetadata() string  { return p.join("overrides", "overrides.json") }
-func (p Paths) OverrideFiles() string     { return p.join("overrides", "files") }
-func (p Paths) Work() string              { return p.join("work") }
-func (p Paths) RuntimeConfig() string     { return p.join("work", "config.yaml") }
-func (p Paths) CorePID() string           { return p.join("work", "core.pid") }
-func (p Paths) Logs() string              { return p.join("logs") }
-func (p Paths) CoreLog() string           { return p.join("logs", "core.log") }
-func (p Paths) RuntimeEvents() string     { return p.join("logs", "runtime-events.jsonl") }
-func (p Paths) State() string             { return p.join("state.json") }
-func (p Paths) StateLock() string         { return p.join(".state.lock") }
-func (p Paths) Preferences() string       { return p.join("preferences.json") }
-func (p Paths) ManagedCores() string      { return p.join("cores") }
-func (p Paths) GeoCache() string          { return p.join("proxy-geo-cache.json") }
-func (p Paths) AgentSkillsState() string  { return p.join("agent-skills-state.json") }
-func (p Paths) SubStore() string          { return p.join("substore") }
-func (p Paths) SubStoreStatus() string    { return p.join("substore", "status.json") }
-func (p Paths) SubStoreResources() string { return p.join("substore", "resources") }
-func (p Paths) SubStoreData() string      { return p.join("substore", "data") }
-func (p Paths) SubStoreLog() string       { return p.join("logs", "substore.log") }
-func (p Paths) ServiceSocket() string     { return p.join("kumo-service.sock") }
-func (p Paths) ServiceLog() string        { return p.join("logs", "kumo-service.log") }
-func (p Paths) GuardianPID() string       { return p.join("work", "guardian.pid") }
+func (p Paths) Profiles() string         { return p.join("profiles") }
+func (p Paths) ProfileMetadata() string  { return p.join("profiles", "profiles-metadata.json") }
+func (p Paths) CurrentProfile() string   { return p.join("profiles", "current.txt") }
+func (p Paths) Overrides() string        { return p.join("overrides") }
+func (p Paths) OverrideMetadata() string { return p.join("overrides", "overrides.json") }
+func (p Paths) OverrideFiles() string    { return p.join("overrides", "files") }
+func (p Paths) Work() string             { return p.join("work") }
+func (p Paths) RuntimeConfig() string    { return p.join("work", "config.yaml") }
+func (p Paths) CorePID() string          { return p.join("work", "core.pid") }
+func (p Paths) Logs() string             { return p.join("logs") }
+func (p Paths) CoreLog() string          { return p.join("logs", "core.log") }
+func (p Paths) State() string            { return p.join("state.json") }
+func (p Paths) StateLock() string        { return p.join(".state.lock") }
+func (p Paths) Preferences() string      { return p.join("preferences.json") }
+func (p Paths) ManagedCores() string     { return p.join("cores") }
+func (p Paths) AgentSkillsState() string { return p.join("agent-skills-state.json") }
+func (p Paths) GuardianPID() string      { return p.join("work", "guardian.pid") }
 
 // ManagedCore is the Mihomo executable Kumo downloads itself.
 func (p Paths) ManagedCore() string {
