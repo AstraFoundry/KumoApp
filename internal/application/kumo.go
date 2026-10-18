@@ -10,6 +10,7 @@ import (
 	"github.com/AstraFoundry/KumoApp/internal/domain/runtimeconfig"
 	"github.com/AstraFoundry/KumoApp/internal/domain/systemproxy"
 	"github.com/AstraFoundry/KumoApp/internal/infrastructure/fetch"
+	"github.com/AstraFoundry/KumoApp/internal/infrastructure/jsoverride"
 	"github.com/AstraFoundry/KumoApp/internal/infrastructure/pac"
 	"github.com/AstraFoundry/KumoApp/internal/infrastructure/paths"
 	"github.com/AstraFoundry/KumoApp/internal/infrastructure/storage"
@@ -52,6 +53,7 @@ func DefaultDependencies(p paths.Paths, owner core.Owner) Dependencies {
 		Preferences:   storage.NewPreferenceStore(p),
 		SystemProxy:   sysproxy.ForOS(),
 		Fetcher:       fetchAdapter{fetch.New()},
+		Transformer:   jsoverride.Runner{},
 		Owner:         owner,
 		ReadyTimeout:  15 * time.Second,
 		WatchInterval: 3 * time.Second,

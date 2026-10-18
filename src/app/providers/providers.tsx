@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ToastProvider } from "@/shared/ui/toast";
 import { TooltipProvider } from "@/shared/ui/tooltip";
-import { useTheme } from "./theme";
+import { useTheme } from "@/shared/lib/theme";
 
 export function Providers({ children }: { children: ReactNode }) {
   useTheme();

@@ -18,8 +18,6 @@ type Preferences struct {
 	LaunchAtLogin bool `json:"launchAtLogin"`
 	// StartCoreOnLaunch starts Mihomo when the app opens.
 	StartCoreOnLaunch bool `json:"startCoreOnLaunch"`
-	// EnableSystemProxyOnStart turns the system proxy on once the core runs.
-	EnableSystemProxyOnStart bool `json:"enableSystemProxyOnStart"`
 	// ReclaimSystemProxy puts Kumo's proxy back when another app replaces it.
 	ReclaimSystemProxy bool `json:"reclaimSystemProxy"`
 	HideMenuBarIcon    bool `json:"hideMenuBarIcon"`
@@ -36,7 +34,7 @@ type Preferences struct {
 
 // Default is what a fresh install uses.
 func Default() Preferences {
-	return Preferences{Theme: ThemeSystem, AutoCheckUpdates: true, EnableSystemProxyOnStart: true}
+	return Preferences{Theme: ThemeSystem, AutoCheckUpdates: true}
 }
 
 // UnmarshalJSON keeps defaults for fields older files leave out.

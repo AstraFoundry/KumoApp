@@ -27,7 +27,9 @@ func Default() (Paths, error) {
 	return Paths{Root: filepath.Join(dir, AppName)}, nil
 }
 
-func (p Paths) join(parts ...string) string { return filepath.Join(append([]string{p.Root}, parts...)...) }
+func (p Paths) join(parts ...string) string {
+	return filepath.Join(append([]string{p.Root}, parts...)...)
+}
 
 func (p Paths) Profiles() string          { return p.join("profiles") }
 func (p Paths) ProfileMetadata() string   { return p.join("profiles", "profiles-metadata.json") }

@@ -32,7 +32,6 @@ const (
 	KindProvider      Kind = "provider"
 	KindBuiltin       Kind = "builtin"
 	KindMissing       Kind = "missing"
-	KindRuleProvider  Kind = "ruleProvider"
 	KindGlobalChooser Kind = "global"
 )
 

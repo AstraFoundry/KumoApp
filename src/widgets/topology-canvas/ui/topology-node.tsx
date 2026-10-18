@@ -11,7 +11,6 @@ export const kindTone: Record<TopologyKind, string> = {
   entry: "bg-brand",
   rules: "bg-violet-500",
   ruleSet: "bg-violet-500",
-  ruleProvider: "bg-violet-500",
   final: "bg-violet-500",
   group: "bg-sky-500",
   global: "bg-sky-500",
@@ -28,7 +27,6 @@ export function kindLabel(kind: TopologyKind): string {
     case "rules":
       return t.topoKindRules();
     case "ruleSet":
-    case "ruleProvider":
       return t.topoKindRuleSet();
     case "final":
       return t.topoKindFinal();

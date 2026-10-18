@@ -34,6 +34,8 @@ type Shell struct {
 	window *mygo.Window
 	tray   *Tray
 	route  string
+	// locale is the language preference last applied, nil before any.
+	locale *string
 
 	cancel   context.CancelFunc
 	shutdown atomic.Bool
@@ -87,6 +89,9 @@ func (s *Shell) ready() {
 	go s.k.Lifecycle.Monitor(ctx)
 	go s.k.Inspect.StreamTraffic(ctx)
 	go s.refreshProfiles(ctx)
+	if prefs.AutoCheckUpdates && mygo.Updater.Enabled() {
+		go s.checkUpdate(ctx)
+	}
 	if prefs.StartCoreOnLaunch && prefs.CompletedSetup {
 		go func() {
 			status, _ := s.k.Lifecycle.Status()
@@ -164,6 +169,20 @@ func notify(title, body string) {
 	go func() { _ = mygo.NewNotification(mygo.NotificationOptions{Title: title, Body: body}).Show() }()
 }
 
+// checkUpdate tells about a new version once, shortly after launch.
+func (s *Shell) checkUpdate(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(30 * time.Second):
+	}
+	up, err := mygo.Updater.Check(ctx)
+	if err != nil || up == nil {
+		return
+	}
+	notify(locales.NotifyUpdateTitle(up.Version), "")
+}
+
 // refreshProfiles refreshes subscriptions whose interval passed.
 func (s *Shell) refreshProfiles(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Minute)
@@ -185,8 +204,11 @@ func (s *Shell) applyPreferences(p preferences.Preferences) {
 	if p.LaunchAtLogin != mygo.App.OpenAtLogin() {
 		_ = mygo.App.SetOpenAtLogin(p.LaunchAtLogin)
 	}
-	if p.Language != "" && p.Language != mygo.App.Locale() {
-		mygo.App.SetLocale(p.Language)
+	// "" follows the system's language.
+	if s.locale == nil || *s.locale != p.Language {
+		language := p.Language
+		s.locale = &language
+		mygo.App.SetLocale(language)
 	}
 	if status, err := s.k.Lifecycle.Status(); err == nil && s.tray != nil {
 		s.tray.mu.Lock()

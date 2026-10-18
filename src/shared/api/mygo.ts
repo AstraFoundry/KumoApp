@@ -352,8 +352,6 @@ export interface Preferences {
   launchAtLogin: boolean;
   /** StartCoreOnLaunch starts Mihomo when the app opens. */
   startCoreOnLaunch: boolean;
-  /** EnableSystemProxyOnStart turns the system proxy on once the core runs. */
-  enableSystemProxyOnStart: boolean;
   /** ReclaimSystemProxy puts Kumo's proxy back when another app replaces it. */
   reclaimSystemProxy: boolean;
   hideMenuBarIcon: boolean;
@@ -663,7 +661,7 @@ export interface TargetStatus {
 export type Theme = "system" | "light" | "dark";
 
 /** Kind is what a node stands for. */
-export type TopologyKind = "entry" | "ruleSet" | "rules" | "final" | "group" | "proxy" | "provider" | "builtin" | "missing" | "ruleProvider" | "global";
+export type TopologyKind = "entry" | "ruleSet" | "rules" | "final" | "group" | "proxy" | "provider" | "builtin" | "missing" | "global";
 
 /** Node is one vertex of the graph. */
 export interface TopologyNode {

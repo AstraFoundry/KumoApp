@@ -261,7 +261,10 @@ func TestSimSystemProxyContention(t *testing.T) {
 	if status.SystemProxy.Ownership != systemproxy.TakenOver {
 		t.Fatalf("takeover not detected: %+v", status.SystemProxy)
 	}
-	if s.eventsOf(func(e Event) bool { c, ok := e.(SystemProxyContended); return ok && c.Ownership == systemproxy.TakenOver && c.Holder != "" }) != 1 {
+	if s.eventsOf(func(e Event) bool {
+		c, ok := e.(SystemProxyContended)
+		return ok && c.Ownership == systemproxy.TakenOver && c.Holder != ""
+	}) != 1 {
 		t.Fatal("no contention event naming the holder")
 	}
 	// A second check does not report it again.
