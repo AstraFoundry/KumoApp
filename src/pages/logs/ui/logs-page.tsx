@@ -7,8 +7,8 @@ import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Empty, EmptyHeader, EmptyTitle } from "@/shared/ui/empty";
+import { OptionSelect } from "@/shared/ui/option-select";
 import { SearchField } from "@/shared/ui/search-field";
-import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
 import { PageHeader } from "@/widgets/page-header";
 
@@ -70,16 +70,22 @@ export function LogsPage() {
         actions={
           <>
             <SearchField label={t.logsSearch()} onChange={setQuery} value={query} />
-            <ToggleGroup onValueChange={(v) => v[0] && setLevel(v[0] as Level)} size="sm" value={[level]} variant="outline">
-              <ToggleGroupItem value="debug">{t.logsDebug()}</ToggleGroupItem>
-              <ToggleGroupItem value="info">{t.logsInfo()}</ToggleGroupItem>
-              <ToggleGroupItem value="warning">{t.logsWarning()}</ToggleGroupItem>
-              <ToggleGroupItem value="error">{t.logsError()}</ToggleGroupItem>
-            </ToggleGroup>
+            <OptionSelect
+              className="w-28"
+              label={t.coreLogLevel()}
+              onChange={setLevel}
+              options={[
+                { value: "debug", label: t.logsDebug() },
+                { value: "info", label: t.logsInfo() },
+                { value: "warning", label: t.logsWarning() },
+                { value: "error", label: t.logsError() },
+              ]}
+              value={level}
+            />
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button aria-label={paused ? t.resume() : t.pause()} onClick={() => setPaused((p) => !p)} size="icon-sm" variant="outline">
+                  <Button aria-label={paused ? t.resume() : t.pause()} onClick={() => setPaused((p) => !p)} size="icon-sm" variant="ghost">
                     {paused ? <PlayIcon aria-hidden="true" /> : <PauseIcon aria-hidden="true" />}
                   </Button>
                 }

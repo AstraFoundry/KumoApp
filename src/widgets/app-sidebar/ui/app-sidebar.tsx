@@ -89,7 +89,7 @@ export function AppSidebar({ active }: { active: RouteId }) {
   return (
     <Sidebar className="border-sidebar-border border-e" collapsible="none">
       {/* Room for the window controls; the empty strip drags the window. */}
-      <SidebarHeader className="h-[max(3rem,var(--mygo-titlebar-height,0px))] shrink-0 p-0 [--app-region:drag]" />
+      <SidebarHeader className="h-3 shrink-0 p-0 in-[.mac]:h-[max(3rem,var(--mygo-titlebar-height,0px))] in-[.mac]:[--app-region:drag]" />
       <SidebarContent className="gap-0 px-1 pb-2">
         {sections.map((section) => (
           <SidebarGroup className="py-1" key={section.items[0]?.id}>

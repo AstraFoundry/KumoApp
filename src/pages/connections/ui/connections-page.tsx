@@ -12,7 +12,7 @@ import { SearchField } from "@/shared/ui/search-field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { toastManager } from "@/shared/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/shared/ui/tooltip";
-import { CoreRequired } from "@/widgets/core-required";
+import { CoreRequired, WhenRunning } from "@/widgets/core-required";
 import { PageHeader } from "@/widgets/page-header";
 
 const icons = new Map<string, Promise<string>>();
@@ -72,12 +72,12 @@ export function ConnectionsPage() {
     <>
       <PageHeader
         actions={
-          <>
+          <WhenRunning>
             <SearchField label={t.connectionsSearch()} onChange={setQuery} value={query} />
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button aria-label={paused ? t.resume() : t.pause()} onClick={() => setPaused((p) => !p)} size="icon-sm" variant="outline">
+                  <Button aria-label={paused ? t.resume() : t.pause()} onClick={() => setPaused((p) => !p)} size="icon-sm" variant="ghost">
                     {paused ? <PlayIcon aria-hidden="true" /> : <PauseIcon aria-hidden="true" />}
                   </Button>
                 }
@@ -87,7 +87,7 @@ export function ConnectionsPage() {
             <Button disabled={rows.length === 0} onClick={() => close("")} size="sm" variant="outline">
               {t.connectionsCloseAll()}
             </Button>
-          </>
+          </WhenRunning>
         }
         id="connections"
       />

@@ -996,6 +996,10 @@ export const App = {
   guide(page: string): Promise<Guide> {
     return call("App.Guide", page);
   },
+  /** Guides returns every page's agent intents, for the page headers to load once. */
+  guides(): Promise<Guide[]> {
+    return call("App.Guides");
+  },
   /** Info returns the app's name, version and links. */
   info(): Promise<Info> {
     return call("App.Info");

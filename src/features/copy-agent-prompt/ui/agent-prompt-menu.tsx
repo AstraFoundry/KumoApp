@@ -14,13 +14,25 @@ import { intentLabel } from "../model/intents";
  * how to do one of the page's tasks with the kumo CLI. It is an aside to
  * the page, so it stays small and unlabeled until hovered.
  */
+// Guides are fixed for the app's life: load them once for every header.
+let guides: Promise<Guide[]> | undefined;
+function loadGuides() {
+  guides ??= App.guides().catch((err) => {
+    guides = undefined;
+    throw err;
+  });
+  return guides;
+}
+
 export function AgentPromptMenu({ page }: { page: string }) {
   const [guide, setGuide] = useState<Guide>();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let live = true;
-    App.guide(page).then((g) => live && setGuide(g));
+    loadGuides()
+      .then((all) => live && setGuide(all.find((g) => g.page === page)))
+      .catch(() => {});
     return () => {
       live = false;
     };
@@ -32,7 +44,7 @@ export function AgentPromptMenu({ page }: { page: string }) {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  if (!guide || guide.intents.length === 0) return null;
+  if (guide && guide.intents.length === 0) return null;
 
   async function copy(intent: string) {
     try {
@@ -51,7 +63,7 @@ export function AgentPromptMenu({ page }: { page: string }) {
           render={
             <MenuTrigger
               render={
-                <Button aria-label={t.agentPromptButton()} className="text-muted-foreground" size="icon-sm" variant="ghost">
+                <Button aria-label={t.agentPromptButton()} className="text-muted-foreground" disabled={!guide} size="icon-sm" variant="ghost">
                   {copied ? <CheckIcon aria-hidden="true" /> : <BotIcon aria-hidden="true" />}
                 </Button>
               }
@@ -63,7 +75,7 @@ export function AgentPromptMenu({ page }: { page: string }) {
       <MenuPopup align="end" className="min-w-64">
         <MenuGroup>
           <MenuGroupLabel>{t.agentPromptMenuTitle()}</MenuGroupLabel>
-          {guide.intents.map((intent) => (
+          {guide?.intents.map((intent) => (
             <MenuItem key={intent.id} onClick={() => copy(intent.id)}>
               {intentLabel(page, intent.id, intent.goal)}
             </MenuItem>

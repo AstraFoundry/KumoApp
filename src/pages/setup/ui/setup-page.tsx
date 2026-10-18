@@ -61,25 +61,27 @@ export function SetupPage() {
   return (
     <div className="flex h-svh bg-background">
       <Showcase className="w-[min(40%,25rem)] shrink-0" scene={sceneOf[step]} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-14 shrink-0 items-end gap-3 ps-11 pe-[calc(var(--mygo-titlebar-inset-right,0px)+1.5rem)] [--app-region:drag]">
+      {/* One column carries the header, the step and the footer, so they
+          share both edges. The pane above it drags the window. */}
+      <div className="flex min-w-0 flex-1 flex-col px-10 [--app-region:drag]">
+        <div className="mx-auto flex h-16 w-full max-w-md shrink-0 items-center justify-between">
           <Stepper current={index} total={steps.length} />
-          <div className="ms-auto [--app-region:no-drag]">
-            <LanguageSelect className="w-32" />
+          <div className="-me-1.75 [--app-region:no-drag]">
+            <LanguageSelect quiet />
           </div>
         </div>
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative mx-auto min-h-0 w-full max-w-md flex-1 overflow-hidden [--app-region:no-drag]">
           <AnimatePresence custom={direction} initial={false} mode="popLayout">
             <motion.div
               animate={{ opacity: 1, x: 0 }}
-              className="absolute inset-0 flex flex-col justify-center overflow-y-auto px-11 py-6"
+              className="absolute inset-0 flex flex-col justify-center overflow-y-auto py-6"
               custom={direction}
               exit={{ opacity: 0, x: -16 * direction }}
               initial={{ opacity: 0, x: 24 * direction }}
               key={step}
               transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
             >
-              <div className="flex max-w-md flex-col gap-6">
+              <div className="flex flex-col gap-6">
                 {step === "welcome" && <Welcome />}
                 {step === "core" && <CoreStep found={setup.data?.coreFound} path={setup.data?.corePath} onChange={() => setup.reload()} />}
                 {step === "profile" && <ProfileStep count={setup.data?.profiles ?? 1} />}
@@ -112,14 +114,14 @@ export function SetupPage() {
             </motion.div>
           </AnimatePresence>
         </div>
-        <div className="flex items-center gap-2 px-11 pt-4 pb-6">
+        <div className="mx-auto flex h-20 w-full max-w-md shrink-0 items-center gap-2 [--app-region:no-drag]">
           {index > 0 && step !== "done" && (
-            <Button onClick={() => move(-1)} variant="ghost">
+            <Button className="-ms-2.75" onClick={() => move(-1)} variant="ghost">
               {t.setupBack()}
             </Button>
           )}
           {step === "welcome" && (
-            <Button className="text-muted-foreground" onClick={() => finish(false)} variant="ghost">
+            <Button className="-ms-2.75 text-muted-foreground" onClick={() => finish(false)} variant="ghost">
               {t.setupSkipAll()}
             </Button>
           )}
@@ -143,7 +145,7 @@ export function SetupPage() {
 
 function Stepper({ current, total }: { current: number; total: number }) {
   return (
-    <div aria-label={t.setupStep(String(current + 1), String(total))} className="flex items-center gap-1.5 pb-1.5" role="img">
+    <div aria-label={t.setupStep(String(current + 1), String(total))} className="flex items-center gap-1.5" role="img">
       {Array.from({ length: total }, (_, i) => (
         <span
           className={cn(

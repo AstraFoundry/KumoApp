@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 export interface Option<T extends string> {
@@ -12,12 +13,15 @@ export function OptionSelect<T extends string>({
   options,
   label,
   className,
+  leading,
 }: {
   value: T;
   onChange: (next: T) => void;
   options: Option<T>[];
   label: string;
   className?: string;
+  /** Shown before the value, such as an icon. */
+  leading?: ReactNode;
 }) {
   const selected = options.find((o) => o.value === value) ?? options[0];
   return (
@@ -28,6 +32,7 @@ export function OptionSelect<T extends string>({
       itemToStringValue={(item) => (item as Option<T>).value}
     >
       <SelectTrigger aria-label={label} className={className ?? "w-44"} size="sm">
+        {leading}
         <SelectValue />
       </SelectTrigger>
       <SelectPopup>

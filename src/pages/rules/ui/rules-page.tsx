@@ -9,7 +9,7 @@ import { SearchField } from "@/shared/ui/search-field";
 import { Switch } from "@/shared/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { toastManager } from "@/shared/ui/toast";
-import { CoreRequired } from "@/widgets/core-required";
+import { CoreRequired, WhenRunning } from "@/widgets/core-required";
 import { PageHeader } from "@/widgets/page-header";
 
 /** The running rules in order; the first match decides. */
@@ -35,7 +35,11 @@ export function RulesPage() {
 
   return (
     <>
-      <PageHeader actions={<SearchField label={t.rulesSearch()} onChange={setQuery} value={query} />} id="rules" />
+      <PageHeader actions={
+          <WhenRunning>
+            <SearchField label={t.rulesSearch()} onChange={setQuery} value={query} />
+          </WhenRunning>
+        } id="rules" />
       <CoreRequired title={t.rulesOff()}>
         <div className="border-b px-5 py-2 text-muted-foreground text-xs">{t.rulesHint(String(rules.data?.length ?? 0))}</div>
         <div className="min-h-0 flex-1 overflow-auto">

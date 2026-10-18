@@ -61,7 +61,7 @@ export function AboutPage() {
   return (
     <>
       <PageHeader id="about" />
-      <PageBody className="max-w-[44rem]">
+      <PageBody className="mx-auto max-w-[44rem]">
         <Card className="overflow-hidden">
           <Showcase className="h-56 rounded-t-[calc(var(--radius-2xl)-1px)]" scene="connect" />
           <div className="flex items-center gap-3 px-5 py-4">

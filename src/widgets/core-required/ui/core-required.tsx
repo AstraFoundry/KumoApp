@@ -28,3 +28,9 @@ export function CoreRequired({ children, title }: { children: ReactNode; title: 
     </Empty>
   );
 }
+
+/** Renders children only while the core runs: header actions of such pages. */
+export function WhenRunning({ children }: { children: ReactNode }) {
+  const status = useStatus();
+  return status?.state === "running" ? <>{children}</> : null;
+}

@@ -6,8 +6,8 @@ import {
   useReactFlow,
   ViewportPortal,
 } from "@xyflow/react";
-import { AlertTriangleIcon, LocateFixedIcon, MinusIcon, PlusIcon, SearchIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangleIcon, LocateFixedIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStatus } from "@/entities/status";
 import { type Graph, Proxies, Topology } from "@/shared/api/mygo";
 import { t } from "@/shared/i18n";
@@ -16,9 +16,9 @@ import { useResource } from "@/shared/lib/use-resource";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/shared/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/shared/ui/input-group";
 import { Label } from "@/shared/ui/label";
 import { Popover, PopoverPopup, PopoverTrigger } from "@/shared/ui/popover";
+import { SearchField } from "@/shared/ui/search-field";
 import { Switch } from "@/shared/ui/switch";
 import { toastManager } from "@/shared/ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group";
@@ -30,16 +30,24 @@ const nodeTypes = { topology: TopologyNodeView, more: MoreNodeView };
 
 const columnTitles = [() => t.topoColumnEntry(), () => t.topoColumnRules(), () => t.topoColumnGroups(), () => t.topoColumnNodes()];
 
-/** The configuration as a graph, from the outbound mode to the nodes. */
-export function TopologyCanvas() {
+// Every control floating on the canvas shares this chrome and height, so
+// panels line up wherever they sit.
+const panel = "flex h-9 items-center rounded-lg border bg-background/90 p-[3px] shadow-xs/5 backdrop-blur";
+
+/**
+ * The configuration as a graph, from the outbound mode to the nodes.
+ * `header` renders the page header with the canvas's actions (find,
+ * issues), so they sit with the page's other header controls.
+ */
+export function TopologyCanvas({ header }: { header: (actions: ReactNode) => ReactNode }) {
   return (
     <ReactFlowProvider>
-      <Canvas />
+      <Canvas header={header} />
     </ReactFlowProvider>
   );
 }
 
-function Canvas() {
+function Canvas({ header }: { header: (actions: ReactNode) => ReactNode }) {
   const status = useStatus();
   const running = status?.state === "running";
   const graph = useResource(() => Topology.graph(), [status?.state, status?.mode, status?.profile.id], {
@@ -67,9 +75,13 @@ function Canvas() {
   const fit = useCallback(
     (duration = 0) => {
       const box = container.current?.getBoundingClientRect();
-      if (!box || laid.nodes.length === 0) return;
-      const bounds = flow.getNodesBounds(laid.nodes);
-      const pad = { x: 32, top: 64, bottom: 56 };
+      // Bounds by id read React Flow's internal nodes, which carry the
+      // measured sizes; the controlled nodes we pass in never do.
+      const ids = flow.getNodes().filter((n) => !n.hidden).map((n) => n.id);
+      if (!box || ids.length === 0) return;
+      const bounds = flow.getNodesBounds(ids);
+      // x is the page gutter: the first column lines up with the title and panels.
+      const pad = { x: 20, top: 64, bottom: 60 };
       const zoom = Math.min(1, Math.max(0.7, Math.min((box.width - pad.x * 2) / bounds.width, (box.height - pad.top - pad.bottom) / bounds.height)));
       const width = bounds.width * zoom;
       const height = bounds.height * zoom;
@@ -77,14 +89,22 @@ function Canvas() {
       const y = height < box.height - pad.top - pad.bottom ? pad.top + (box.height - pad.top - pad.bottom - height) / 2 : pad.top;
       void flow.setViewport({ x: x - bounds.x * zoom, y: y - bounds.y * zoom, zoom }, { duration });
     },
-    [flow, laid.nodes],
+    [flow],
   );
 
-  // Fit once the first graph arrives and whenever the scope changes.
+  // Fit when the first graph arrives and whenever the scope changes, once
+  // React Flow has measured the nodes (their bounds are empty before).
   // biome-ignore lint/correctness/useExhaustiveDependencies: fit on these changes only
   useEffect(() => {
     if (!data) return;
-    const frame = requestAnimationFrame(() => fit());
+    let frame = 0;
+    let tries = 0;
+    const attempt = () => {
+      const nodes = flow.getNodes().filter((n) => !n.hidden);
+      if (nodes.length > 0 && nodes.every((n) => flow.getInternalNode(n.id)?.measured.width)) fit();
+      else if (tries++ < 60) frame = requestAnimationFrame(attempt);
+    };
+    frame = requestAnimationFrame(attempt);
     return () => cancelAnimationFrame(frame);
   }, [data === undefined, scope, focus && scope === "path"]);
 
@@ -121,18 +141,50 @@ function Canvas() {
     }
   }
 
+  const actions = (
+    <>
+      {data && data.issues.length > 0 && (
+        <Popover>
+          <PopoverTrigger render={<Button size="sm" variant="outline" />}>
+            <AlertTriangleIcon aria-hidden="true" className="text-warning" />
+            {t.topoIssues(String(data.issues.length))}
+          </PopoverTrigger>
+          <PopoverPopup align="end" className="w-96">
+            <ul className="flex flex-col gap-2 text-xs">
+              {data.issues.map((issue) => (
+                <li key={issue.message}>
+                  <button className="text-left hover:underline" onClick={() => setFocus(`missing:${issue.missing}`)} type="button">
+                    {issue.message}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </PopoverPopup>
+        </Popover>
+      )}
+      <form onSubmit={find}>
+        <SearchField label={t.topoFind()} onChange={setSearch} value={search} />
+      </form>
+    </>
+  );
+
   if (graph.error && !data) {
     return (
+      <>
+      {header(null)}
       <Empty className="flex-1">
         <EmptyHeader>
           <EmptyTitle>{t.topoError()}</EmptyTitle>
           <EmptyDescription data-selectable>{errorMessage(graph.error)}</EmptyDescription>
         </EmptyHeader>
       </Empty>
+      </>
     );
   }
 
   return (
+    <>
+    {header(actions)}
     <div className="flex min-h-0 flex-1">
       <div className="relative min-w-0 flex-1 bg-muted/20" ref={container}>
         <ReactFlow
@@ -165,8 +217,8 @@ function Canvas() {
           </ViewportPortal>
         </ReactFlow>
 
-        <div className="pointer-events-none absolute inset-x-3 top-3 flex items-start gap-2">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-background/90 p-1 shadow-xs/5 backdrop-blur">
+        <div className="pointer-events-none absolute top-3 left-5">
+          <div className={`${panel} pointer-events-auto gap-2`}>
             <ToggleGroup onValueChange={(v) => v[0] && setScope(v[0] as "all" | "path")} size="sm" value={[scope]} variant="default">
               <ToggleGroupItem className="px-2.5" value="all">
                 {t.topoScopeAll()}
@@ -180,53 +232,22 @@ function Canvas() {
               {t.topoDynamicMembers()}
             </Label>
           </div>
-          <form className="pointer-events-auto" onSubmit={find}>
-            <InputGroup className="w-52 bg-background/90 backdrop-blur">
-              <InputGroupAddon>
-                <SearchIcon aria-hidden="true" />
-              </InputGroupAddon>
-              <InputGroupInput aria-label={t.topoFind()} onChange={(e) => setSearch(e.target.value)} placeholder={t.topoFind()} size="sm" value={search} />
-            </InputGroup>
-          </form>
-          <div className="ms-auto flex items-center gap-1">
-            {data && data.issues.length > 0 && (
-              <Popover>
-                <PopoverTrigger render={<Button className="pointer-events-auto bg-background/90" size="sm" variant="outline" />}>
-                  <AlertTriangleIcon aria-hidden="true" className="text-warning" />
-                  {t.topoIssues(String(data.issues.length))}
-                </PopoverTrigger>
-                <PopoverPopup align="end" className="w-96">
-                  <ul className="flex flex-col gap-2 text-xs">
-                    {data.issues.map((issue) => (
-                      <li key={issue.message}>
-                        <button
-                          className="text-left hover:underline"
-                          onClick={() => setFocus(`missing:${issue.missing}`)}
-                          type="button"
-                        >
-                          {issue.message}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </PopoverPopup>
-              </Popover>
-            )}
-            <div className="pointer-events-auto flex items-center rounded-lg border bg-background/90 shadow-xs/5 backdrop-blur">
-              <Button aria-label={t.topoZoomOut()} onClick={() => flow.zoomOut({ duration: 150 })} size="icon-sm" variant="ghost">
-                <MinusIcon aria-hidden="true" />
-              </Button>
-              <Button aria-label={t.topoZoomIn()} onClick={() => flow.zoomIn({ duration: 150 })} size="icon-sm" variant="ghost">
-                <PlusIcon aria-hidden="true" />
-              </Button>
-              <Button aria-label={t.topoFit()} onClick={() => fit(250)} size="icon-sm" variant="ghost">
-                <LocateFixedIcon aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
         </div>
 
-        <Legend hidden={laid.hidden} />
+        <div className="pointer-events-none absolute inset-x-5 bottom-3 flex items-end justify-between gap-2">
+          <Legend hidden={laid.hidden} />
+          <div className={`${panel} pointer-events-auto`}>
+            <Button aria-label={t.topoZoomOut()} onClick={() => flow.zoomOut({ duration: 150 })} size="icon-sm" variant="ghost">
+              <MinusIcon aria-hidden="true" />
+            </Button>
+            <Button aria-label={t.topoZoomIn()} onClick={() => flow.zoomIn({ duration: 150 })} size="icon-sm" variant="ghost">
+              <PlusIcon aria-hidden="true" />
+            </Button>
+            <Button aria-label={t.topoFit()} onClick={() => fit(250)} size="icon-sm" variant="ghost">
+              <LocateFixedIcon aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
       </div>
       {focused && data && (
         <Inspector
@@ -241,6 +262,7 @@ function Canvas() {
         />
       )}
     </div>
+    </>
   );
 }
 
@@ -252,7 +274,7 @@ function Legend({ hidden }: { hidden: number }) {
     { className: "kumo-legend-broken", label: t.topoLegendBroken() },
   ];
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-4 rounded-lg border bg-background/90 px-3 py-1.5 text-[0.6875rem] text-muted-foreground shadow-xs/5 backdrop-blur">
+    <div className={`${panel} pointer-events-none gap-4 px-3 text-[0.6875rem] text-muted-foreground`}>
       {items.map((item) => (
         <span className="flex items-center gap-1.5" key={item.label}>
           <svg aria-hidden="true" className={item.className} height="6" width="22">

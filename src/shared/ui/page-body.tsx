@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import { cn } from "@/shared/lib/utils";
 
-/** The scrolling area under a page header, at a readable width. */
+/**
+ * The scrolling area under a page header, at a readable width. It shares
+ * the header's 20px gutter and stays left-aligned under the title, so the
+ * two never drift apart on wide windows.
+ */
 export function PageBody({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className={cn("mx-auto flex w-full flex-col gap-6 px-6 py-6", wide ? "max-w-none" : "max-w-[60rem]", className)}>{children}</div>
+      <div className={cn("flex w-full flex-col gap-6 px-5 py-5", wide ? "max-w-none" : "max-w-[60rem]", className)}>{children}</div>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import type { RouteId } from "@/shared/config/routes";
  */
 export function PageHeader({ id, actions }: { id: RouteId; actions?: ReactNode }) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b ps-5 pe-[calc(var(--mygo-titlebar-inset-right,0px)+1rem)] [--app-region:drag]">
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b ps-5 pe-[calc(var(--mygo-titlebar-inset-right,0px)+1.25rem)] [--app-region:drag]">
       <h1 className="min-w-0 truncate font-semibold text-[0.9375rem]">{pageTitle(id)}</h1>
       <div className="ms-auto flex items-center gap-2 [--app-region:no-drag]">
         {actions}

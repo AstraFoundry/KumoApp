@@ -121,18 +121,24 @@ func (s *Shell) Open(route string) {
 	} else if route != "" {
 		start = route
 	}
-	s.window = mygo.NewWindow(mygo.WindowOptions{
-		Title:                "Kumo",
-		URL:                  start,
-		Width:                1180,
-		Height:               780,
-		MinWidth:             940,
-		MinHeight:            620,
-		TitleBarStyle:        mygo.TitleBarHidden,
-		TrafficLightPosition: &mygo.Point{X: 18, Y: 20},
-		BackgroundColor:      "light-dark(#f7f7f8, #161618)",
-		StateKey:             "main",
-	})
+	options := mygo.WindowOptions{
+		Title:           "Kumo",
+		URL:             start,
+		Width:           1180,
+		Height:          780,
+		MinWidth:        940,
+		MinHeight:       620,
+		BackgroundColor: "light-dark(#f7f7f8, #161618)",
+		StateKey:        "main",
+	}
+	// On macOS the content runs under the title bar, with the traffic
+	// lights over the sidebar. Elsewhere the system's title bar keeps its
+	// own controls, so page headers never have to make room for them.
+	if runtime.GOOS == "darwin" {
+		options.TitleBarStyle = mygo.TitleBarHidden
+		options.TrafficLightPosition = &mygo.Point{X: 18, Y: 20}
+	}
+	s.window = mygo.NewWindow(options)
 	s.window.OnClosed(func() {
 		s.mu.Lock()
 		s.window = nil

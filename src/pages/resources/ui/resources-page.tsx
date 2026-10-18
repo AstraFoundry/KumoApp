@@ -11,7 +11,7 @@ import { Button } from "@/shared/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/shared/ui/empty";
 import { PageBody, Section } from "@/shared/ui/page-body";
 import { toastManager } from "@/shared/ui/toast";
-import { CoreRequired } from "@/widgets/core-required";
+import { CoreRequired, WhenRunning } from "@/widgets/core-required";
 import { PageHeader } from "@/widgets/page-header";
 
 export function ResourcesPage() {
@@ -57,10 +57,12 @@ export function ResourcesPage() {
     <>
       <PageHeader
         actions={
-          <Button loading={geo} onClick={updateGeo} size="sm" variant="outline">
-            <GlobeIcon aria-hidden="true" />
-            {t.resourcesGeo()}
-          </Button>
+          <WhenRunning>
+            <Button loading={geo} onClick={updateGeo} size="sm" variant="outline">
+              <GlobeIcon aria-hidden="true" />
+              {t.resourcesGeo()}
+            </Button>
+          </WhenRunning>
         }
         id="resources"
       />

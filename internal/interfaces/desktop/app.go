@@ -185,6 +185,9 @@ func parseTargets(agents []string) ([]skills.Target, error) {
 // SkillMarkdown is the bundled skill, for agents set up by hand.
 func (a *App) SkillMarkdown() string { return skills.SkillMarkdown() }
 
+// Guides returns every page's agent intents, for the page headers to load once.
+func (a *App) Guides() []application.Guide { return application.Guides() }
+
 // Guide returns a page's agent intents.
 func (a *App) Guide(page string) application.Guide {
 	guide, _ := application.GuideFor(page)
