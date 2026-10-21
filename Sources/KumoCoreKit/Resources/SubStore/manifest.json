@@ -1,5 +1,0 @@
-{
-  "version": "bundled-2026-05-12",
-  "nodeExecutableRelativePath": "node/bin/node",
-  "backendBundleRelativePath": "backend/sub-store.bundle.js"
-}

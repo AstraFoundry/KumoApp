@@ -30,3 +30,10 @@ Sources/KumoCoreKit/Resources/SubStore/node/
 
 # Local workspace and agent caches
 .workspace/
+
+# Go + MyGo + Vite
+node_modules/
+/dist/
+/.mygo/
+mygo_windows_*.syso
+/.cache/

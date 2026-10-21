@@ -62,5 +62,5 @@ Using `[String: Any]` or `[String: String]` for these fields is either type-unsa
 
 ## Related
 
-- `docs/core/dns-and-sniffer-configuration.md`
+- `docs/core/profiles-runtime-configuration.md`
 - `Sources/KumoCoreKit/Models/Models.swift` (PolicyValue and FallbackFilterValue definitions)

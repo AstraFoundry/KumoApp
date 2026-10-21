@@ -1,218 +1,29 @@
 # Persistence and Logging
 
-## Application Support Directory
+All Kumo processes share one data directory: `$KUMO_HOME`, else the user
+configuration directory joined with `Kumo` (`~/Library/Application
+Support/Kumo` on macOS, `~/.config/Kumo` on Linux, `%AppData%\Kumo` on
+Windows). The layout matches the Swift app's, so its data carries over.
 
-Kumo stores local state under:
+| Path | Holds |
+| --- | --- |
+| `state.json` (+ `.state.lock`) | the runtime record: state, pid, owner, settings, system proxy record, last exit. Writes take the lock; the Swift app's older format is migrated on read |
+| `preferences.json` | app preferences (login, start core, quit on close, language, theme, setup done, updates) |
+| `profiles/` | profile YAML, `profiles-metadata.json`, `current.txt` |
+| `overrides/` | `overrides.json` and `files/` |
+| `work/config.yaml` | the generated runtime config Mihomo runs |
+| `work/core.pid`, `work/guardian.pid` | the running core and guardian |
+| `cores/mihomo` | the core Kumo downloaded |
+| `logs/core.log` | Mihomo's output, with a `--- Kumo started … ---` line per start |
+| `agent-skills-state.json` | which agents have the Kumo skill |
 
-```text
-~/Library/Application Support/Kumo/
-```
-
-`KumoPaths` centralizes all paths so GUI, CLI, tests, and future service code use the same layout.
-
-## Directory Layout
-
-```text
-Kumo/
-  profiles/
-    default.yaml
-    profiles-metadata.json
-    current.txt
-  overrides/
-    overrides.json
-    files/
-  work/
-    config.yaml
-  logs/
-    core.log
-    substore.log
-  cores/
-    mihomo
-  substore/
-    status.json
-    backend/
-    frontend/
-  state.json
-  preferences.json
-```
-
-## Backup Format
-
-Kumo can export a directory backup containing:
-
-- `manifest.json`
-- `profiles/`
-- `overrides/`
-- `substore/`
-- `state.json`
-
-The first backup format is directory-based rather than zip-based so it remains
-transparent, testable, and easy for agents to inspect. A future UI can wrap the
-same manifest in a compressed archive or sync it to WebDAV without changing the
-CoreKit import/export contract.
-
-## State File
-
-`state.json` stores `CoreStatus`:
-
-- core run state
-- process identifier
-- outbound mode
-- controller endpoint
-- mixed proxy port
-- system proxy state (including PAC `mode` and `pacScript`)
-- controlled runtime settings, including TUN stack, routing, DNS, route
-  exclusions, MTU, and ICMP forwarding preferences
-- last status message
-
-This allows the CLI and GUI to share state without requiring a service in v1.
-Runtime setting models must decode missing fields with defaults so app updates
-can add new TUN controls without invalidating an existing `state.json`.
-
-## User Preferences
-
-`preferences.json` stores `UserPreferences` (UI lifecycle preferences that do
-not affect Mihomo runtime):
-
-- `launchAtLogin` — synced with `SMAppService.mainApp` by `KumoAppDelegate`.
-- `hideMenuBarIcon` — persisted for the menu bar visibility preference; Kumo now uses
-  an AppKit `NSStatusItem`, so runtime visibility can be wired through the status item
-  controller when the Settings toggle is re-exposed.
-- `quitOnLastWindowClose` — read by
-  `applicationShouldTerminateAfterLastWindowClosed`.
-- `updateChannel` (`stable` / `beta`) and `updateManifestURL` — feed
-  `AppUpdateManager.checkForUpdate(...)`. A blank `updateManifestURL` uses
-  Kumo's default GitHub Releases feed; a value overrides it for local testing
-  or private distribution.
-- `appLanguage` — an optional BCP-47 language tag (e.g. `en`, `zh-Hans`).
-  `nil` means follow the system language. On launch `LocalizationManager` reads
-  this value and writes it to the standard `AppleLanguages` UserDefaults key so
-  macOS resolves the correct `.lproj` at the next launch. The field is decoded
-  with `decodeIfPresent` so older `preferences.json` files without it default to
-  `nil`.
-
-Decoding falls back to defaults so a missing or corrupted file never blocks
-launch.
-
-## App Updates
-
-App update downloads are cached under:
-
-```text
-updates/downloads/
-```
-
-The detached DMG installer writes its log to:
-
-```text
-logs/app-update-installer.log
-```
-
-The cache is disposable. Release metadata and artifact rules are documented in
-[Release Management](release-management.md).
-
-## Sub-Store
-
-`substore/status.json` (`SubStoreStatus`) stores enable flag, custom backend
-URL, host/LAN mode, proxy mode, cron settings, resource version, copied bundle
-paths, and configured ports.
-
-Bundled Sub-Store resources are copied from `KumoCoreKit` into:
-
-```text
-substore/resources/
-  manifest.json
-  node/bin/node
-  backend/sub-store.bundle.js
-```
-
-Sub-Store runtime data is kept under `substore/data/`, matching
-`SUB_STORE_DATA_BASE_PATH`. Temporary staging work belongs under
-`substore/temp/`. There is no bundled web frontend: Kumo's SwiftUI Sub-Store
-surface talks to the local backend over HTTP directly.
-
-`SubStoreSupervisor` launches the bundled Node sidecar with
-`sub-store.bundle.js` and Sparkle-compatible environment variables. Stopping
-Sub-Store terminates the backend process and closes the log handle.
-
-## Runtime Configuration
-
-The generated Mihomo runtime configuration is written to:
-
-```text
-work/config.yaml
-```
-
-Mihomo is launched with the work directory so it reads the generated config.
+JSON files are written to a temporary file and renamed. MyGo keeps window
+state and the chosen language in its own app data.
 
 ## Logs
 
-Core stdout and stderr are appended to:
-
-```text
-logs/core.log
-```
-
-Sub-Store backend stdout and stderr are appended to:
-
-```text
-logs/substore.log
-```
-
-Each Sub-Store launch writes a header line (`[ISO timestamp] starting <executable> <args>`) so log readers can split sessions easily.
-
-The main UI intentionally does not expose full logs on the Overview screen. Full log inspection belongs in the `Logs` destination under `Inspect`. The `Sub-Store` settings page surfaces a "View Logs" button that opens `logs/substore.log` in the user's text editor.
-
-Live Mihomo logs should be treated as an event stream with a bounded in-memory cache. The local `core.log` file remains a fallback and diagnostic artifact.
-
-The CLI has a separate debug-log channel under:
-
-```text
-logs/cli/
-```
-
-Each `kumo` invocation may create a `*-kumo-debug-0.log` file with command-level
-diagnostics. `--logs-max <count>` controls retention, and `--logs-max=0`
-disables CLI debug log files for sensitive environments. `--logs-dir <path>`
-can redirect these files for temporary diagnostics.
-
-`kumo --timing` writes a process-specific `*-kumo-timing.json` file in the same
-directory. Timing files are for performance diagnostics and should not be mixed
-with runtime event streams.
-
-CLI terminal output follows npm-style log levels:
-
-```text
-silent < error < warn < notice < http < info < verbose < silly
-```
-
-Normal command results go to stdout. Logs, warnings, progress, timing summaries,
-and debug-log paths go to stderr. `--json` keeps stdout as plain JSON only.
-
-Before writing terminal or file logs, CLI diagnostics redact controller secrets,
-authorization headers, basic auth passwords, subscription tokens, and token-like
-query parameters. Redaction is a safety net, not a reason to paste logs into
-public places without review.
-
-## Overrides
-
-Overrides are planned under:
-
-```text
-overrides/
-  overrides.json
-  files/
-    <id>.yaml
-    <id>.js
-    <id>.log
-```
-
-YAML overrides are applied before Kumo-controlled runtime settings. JavaScript overrides require a reviewed sandbox before they are enabled.
-
-## Future Work
-
-- Rotate logs.
-- Add separate app and service logs.
-- Add structured JSONL event logs for agents.
-- Add privacy review for logs before sharing diagnostics.
-- Add log rotation and Sub-Store log retention controls.
+- `logs/core.log` collects stdout and stderr of every core Kumo starts.
+  `kumo logs path` prints it; `kumo logs --follow` and the Logs page stream
+  live logs from the controller, with the file's tail as history.
+- A start that fails reports the last error line of the log.
+- App diagnostics (shutdown, guardian, refresh errors) go to stderr.

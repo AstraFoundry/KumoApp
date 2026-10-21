@@ -1,82 +1,51 @@
-# Core Control Layer
+# Control Layer
 
-## Purpose
+Kumo follows Domain-Driven Design. Dependencies point inward: interfaces →
+application → domain, with infrastructure implementing the domain's ports.
 
-`KumoCoreKit` is the shared domain layer for the GUI, CLI, tests, and future service mode. It prevents the app from developing separate, inconsistent implementations for lifecycle control, profile generation, controller calls, and system proxy changes.
+## Domain (`internal/domain`)
 
-## Public Entry Point
+Pure types and rules, no I/O.
 
-`KumoController` is the high-level facade. It currently exposes:
+| Package | Holds |
+| --- | --- |
+| `core` | `Runtime` aggregate (state, pid, owner, readiness, mode, endpoint, settings, system proxy, last exit) and its transitions (`BeginStart`, `Launched`, `Ready`, `Fail`, `Stopped`, `Exited`); `Mode`, `Owner`, `RuntimeSettings` (geo data, TUN, DNS, sniffer); `PortConflict`; the `Store` port |
+| `systemproxy` | settings, PAC rendering, `Applied` and `OwnershipOf` (owned / taken over / cleared), the `Platform` port |
+| `profile` | profile metadata (compatible with the Swift app's files), usage parsing, refresh due dates, `Repository` and `Fetcher` ports |
+| `override` | YAML deep merge with `+key`, `key+`, `prepend-`, `append-`, `delete-`, `key!` and `<key>`; JavaScript overrides through a `Transformer` port |
+| `runtimeconfig` | `Build`: profile + overrides + Kumo's controlled keys → the config Mihomo runs |
+| `proxy`, `inspect`, `topology` | proxy groups and grades, country flags, connection/rule views, the routing graph |
+| `preferences` | app preferences and their store port |
 
-- `status()`
-- `currentProfile()`
-- `profiles()`
-- `setCurrentProfile(id:)`
-- `coreCandidates()`
-- `setCorePath(_:)`
-- `installManagedCore()`
-- `start(corePath:)`
-- `stop()`
-- `restart(corePath:)`
-- `setMode(_:)`
-- `proxyGroups()`
-- `selectProxy(group:name:)`
-- `testProxyDelay(proxy:testURL:)`
-- `testGroupDelay(group:)`
-- `refreshProfile(from:)`
-- `importProfile(from:)`
-- `profileContent(id:)`
-- `updateProfile(...)`
-- `deleteProfile(id:)`
-- `refreshProfile(id:)`
-- `refreshDueProfiles()`
-- `coreConfiguration()`
-- `rules()`
-- `connections()`
-- `recentLogs(limit:)`
-- `setSystemProxy(_:dryRun:)`
-- `dnsSettings()` / `updateDnsSettings(_:)` / `applyDnsSettings(_:)` / `setDnsEnabled(_:)`
-- `snifferSettings()` / `updateSnifferSettings(_:)` / `applySnifferSettings(_:)` / `setSnifferEnabled(_:)`
-- `updateTunSettings(_:)` / `applyTunSettings(_:)` / `setTunEnabled(_:)`
-- `subStoreStatus()` / `updateSubStoreStatus(_:)` / `prepareSubStoreResources()`
-- `exportBackup(to:)` / `importBackup(from:)`
-- `checkAppUpdate(...)` / `downloadAppUpdate(...)` / `installAppUpdate(...)`
-- `userPreferences()` / `updateUserPreferences(_:)`
-- `installCLILink()` / `uninstallCLILink()`
+## Application (`internal/application`)
 
-This API is intentionally close to the CLI command vocabulary and the future service API.
+`application.New(deps)` wires one `Kumo` with these services, shared by the
+desktop app, the CLI and the guardian:
 
-## Internal Responsibilities
+`Lifecycle`, `SystemProxyService`, `ProfileService`, `OverrideService`,
+`ProxyService`, `InspectService`, `SettingsService`, `TopologyService`,
+`PreferenceService`, plus `Guard`, `Doctor`, `Guides`/`Prompt`.
 
-`KumoCoreKit` is split by responsibility:
+`Dependencies` names every adapter, so tests swap in an in-memory system
+proxy, a fake fetcher or a short readiness timeout. `Owner` records which
+surface (app, CLI) started the core.
 
-- Models: `Profile`, `ProxyGroup`, `ProxyNode`, `CoreStatus`, `OutboundMode`, `CoreRuntimeSettings`, `TunSettings`, `DnsSettings`, `SnifferSettings`, `PolicyValue`, `FallbackFilterValue`.
-- Configuration: profile loading, override management, and runtime config generation.
-- Runtime: Mihomo process supervision, Sub-Store lifecycle, and core installation.
-- Networking: Mihomo external-controller client and Sub-Store HTTP client.
-- System: macOS system proxy command construction and execution, PAC server.
-- Service: signed Unix socket transport for privileged helper IPC.
-- Support: paths, state storage, shared errors, app updates, backups, and CLI link management.
+### Events
 
-## Design Rules
+A small in-process `Bus` carries `StatusChanged`, `CoreExited`,
+`SystemProxyContended`, `TrafficSampled`, `LogReceived` and
+`ProfilesChanged`. The desktop shell forwards them to the frontend as MyGo
+events and to the tray and notifications.
 
-- Keep UI concerns out of `KumoCoreKit`.
-- Keep `Process` and shell execution behind small wrappers.
-- Keep dry-run paths available for tests and agent workflows.
-- Keep error messages specific enough for UI and CLI display.
-- Keep advanced GUI behavior behind `KumoController` so the CLI and future service mode can reuse it.
+## Infrastructure (`internal/infrastructure`)
 
-## Sparkle-Parity Growth Areas
+`paths`, `storage` (JSON files with flock), `mihomo` (REST client, launcher,
+discovery, installer), `process`, `ports` (free ports and holders),
+`sysproxy` (macOS `networksetup`, Linux `gsettings`, Windows registry, and
+file/memory fakes), `pac`, `fetch`, `jsoverride` (goja), `skills`,
+`clilink`.
 
-The next alignment pass expands the facade in these areas:
+## Interfaces (`internal/interfaces`)
 
-- Runtime settings: controlled ports, LAN, log level, controller secret, IPv6, and Geo data settings.
-- Providers: proxy provider and rule provider listing, refresh, and safe content preview.
-- Rules: richer rule metadata and rule enable/disable operations.
-- Logs: structured recent logs plus a live log event stream.
-- Overrides: ordered YAML overrides first, followed by reviewed JavaScript transform support.
-- Sub-Store: local service lifecycle and optional custom backend support.
-
-## Future Compatibility
-
-When a privileged service is introduced, `KumoController` should be able to switch from local implementations to service-backed implementations without changing GUI or CLI command semantics.
+`cli` (the `kumo` command) and `desktop` (MyGo shell and bindings). See
+[Interfaces](../interfaces/README.md).

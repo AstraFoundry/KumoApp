@@ -61,7 +61,7 @@ Store `hosts` inside `DnsSettings` for UI and persistence convenience, but emit 
 
 ### Mitigations
 
-- Documented in `docs/core/dns-and-sniffer-configuration.md` and this ADR.
+- Documented in `docs/core/profiles-runtime-configuration.md` and this ADR.
 - Clear naming: `DnsSettings.hosts` acknowledges the storage location, while `controlledHostsYAML` and `runtimePatch` handle the emission correctly.
 
 ## Alternatives Considered
@@ -76,6 +76,6 @@ Always add `hosts` to `controlledTopLevelKeys` regardless of whether the user ha
 
 ## Related
 
-- `docs/core/dns-and-sniffer-configuration.md`
+- `docs/core/profiles-runtime-configuration.md`
 - `Sources/KumoCoreKit/Configuration/RuntimeConfigBuilder.swift`
 - `Sources/KumoCoreKit/Networking/MihomoControllerClient.swift`

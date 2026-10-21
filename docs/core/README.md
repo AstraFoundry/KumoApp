@@ -1,9 +1,6 @@
-# Core Documentation
+# Core
 
-Core docs describe the shared `KumoCoreKit` behavior used by the GUI, CLI, and future service mode.
-
-## Documents
-
-- [Control Layer](control-layer.md) — `KumoController`, ownership boundaries, and shared behavior rules.
-- [Mihomo Runtime and Controller](mihomo-runtime-controller.md) — process supervision, controller API usage, transport, and errors.
-- [Profiles and Runtime Configuration](profiles-runtime-configuration.md) — profile import, metadata, runtime config generation, and overrides.
+- [Control layer](control-layer.md) — DDD layers, application services and events.
+- [Mihomo runtime controller](mihomo-runtime-controller.md) — start, readiness, reload, stop, ports, adoption and the guardian.
+- [Profiles and runtime configuration](profiles-runtime-configuration.md) — profiles, overrides, the generated config, DNS, sniffer and TUN.
+- [Topology](topology.md) — the routing graph behind the Topology page.
