@@ -81,7 +81,7 @@ export function ImportProfileDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogPopup className="max-w-xl">
-        <form onSubmit={submit}>
+        <form className="contents" onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{t.importTitle()}</DialogTitle>
             <DialogDescription>{t.importDescription()}</DialogDescription>
