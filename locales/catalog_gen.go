@@ -5210,14 +5210,14 @@ func (msgs Messages) TunStack() string {
 	return Catalog.Format(msgs.locale, "tunStack", nil)
 }
 
-// TunStackHint says "Mixed uses the system stack for TCP and gVisor for UDP."
+// TunStackMipsHint says "Needs Mihomo 1.19.32 or later."
 // in the language the app shows.
-func TunStackHint() string { return In(i18n.Locale()).TunStackHint() }
+func TunStackMipsHint() string { return In(i18n.Locale()).TunStackMipsHint() }
 
-// TunStackHint says "Mixed uses the system stack for TCP and gVisor for UDP."
+// TunStackMipsHint says "Needs Mihomo 1.19.32 or later."
 // in the language of msgs.
-func (msgs Messages) TunStackHint() string {
-	return Catalog.Format(msgs.locale, "tunStackHint", nil)
+func (msgs Messages) TunStackMipsHint() string {
+	return Catalog.Format(msgs.locale, "tunStackMipsHint", nil)
 }
 
 // TunStrict says "Strict route"

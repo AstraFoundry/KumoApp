@@ -540,7 +540,7 @@
   "tunPermissionNeeded": "Permission needed",
   "tunPermissionOK": "Mihomo has permission",
   "tunStack": "Stack",
-  "tunStackHint": "Mixed uses the system stack for TCP and gVisor for UDP.",
+  "tunStackMipsHint": "Needs Mihomo 1.19.32 or later.",
   "tunStrict": "Strict route",
   "tunStrictHint": "Stops leaks around the TUN device.",
   "tunUse": "Use TUN",

@@ -46,7 +46,12 @@ enabled overrides and Kumo's controlled keys, which always win:
   `log-level`, `ipv6`, `find-process-mode`;
 - geo data: `geodata-mode`, `geo-auto-update`, `geo-update-interval`,
   `geox-url`;
-- `tun` when Kumo's TUN is on;
+- `tun` when Kumo's TUN is on. The stack is `mips` (the default),
+  `mixed`, `gvisor` or `system`; anything else becomes `mips`. `mips` needs
+  Mihomo 1.19.32 or later — an older core rejects it as an invalid stack and
+  does not start. Kumo does not check the core's version; the TUN page says
+  so when MIPS is selected. Stored settings keep their stack, so only new
+  installs and unset values default to `mips`;
 - `dns` (and `hosts`) when *Manage DNS* is on — otherwise the profile's own
   `dns` applies;
 - `sniffer` when *Manage sniffer* is on — otherwise the profile's applies.

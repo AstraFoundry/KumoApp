@@ -516,7 +516,7 @@
   "tunPermissionNeeded": "需要权限",
   "tunPermissionOK": "Mihomo 已获授权",
   "tunStack": "协议栈",
-  "tunStackHint": "Mixed 对 TCP 使用 system，对 UDP 使用 gVisor。",
+  "tunStackMipsHint": "需要 Mihomo 1.19.32 或更高版本。",
   "tunStrict": "严格路由",
   "tunStrictHint": "防止流量绕过 TUN 设备泄漏。",
   "tunUse": "使用 TUN",

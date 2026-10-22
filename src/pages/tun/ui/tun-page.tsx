@@ -71,11 +71,12 @@ export function TunPage() {
         {tun && (
           <Section description={t.tunAdvancedHint()} title={t.tunAdvanced()}>
             <SettingsGroup>
-              <SettingRow description={t.tunStackHint()} label={t.tunStack()}>
+              <SettingRow description={tun.stack === "mips" ? t.tunStackMipsHint() : undefined} label={t.tunStack()}>
                 <OptionSelect
                   label={t.tunStack()}
                   onChange={(stack) => set({ stack })}
                   options={[
+                    { value: "mips", label: "MIPS" },
                     { value: "mixed", label: "Mixed" },
                     { value: "gvisor", label: "gVisor" },
                     { value: "system", label: "System" },
