@@ -105,12 +105,12 @@ type TUNSettings struct {
 }
 
 // TUNStacks are the network stacks Mihomo implements.
-var TUNStacks = []string{"mixed", "gvisor", "system"}
+var TUNStacks = []string{"mips", "mixed", "gvisor", "system"}
 
 // DefaultTUNSettings leave TUN off with Mihomo's recommended routing.
 func DefaultTUNSettings() TUNSettings {
 	return TUNSettings{
-		Stack:               "mixed",
+		Stack:               "mips",
 		AutoRoute:           true,
 		AutoDetectInterface: true,
 		DNSHijack:           []string{"any:53"},
@@ -133,7 +133,7 @@ func (s *TUNSettings) UnmarshalJSON(data []byte) error {
 func (s TUNSettings) Normalized() TUNSettings {
 	s.MTU = max(576, min(9000, s.MTU))
 	if !slices.Contains(TUNStacks, s.Stack) {
-		s.Stack = "mixed"
+		s.Stack = "mips"
 	}
 	s.DNSHijack = NormalizeList(s.DNSHijack)
 	s.RouteExcludeAddress = NormalizeList(s.RouteExcludeAddress)

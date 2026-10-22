@@ -85,6 +85,19 @@ func TestTUNAndSniffer(t *testing.T) {
 	}
 }
 
+func TestTUNStack(t *testing.T) {
+	cases := map[string]string{"": "mips", "mips": "mips", "mixed": "mixed", "gvisor": "gvisor", "system": "system", "lwip": "mips"}
+	for stack, want := range cases {
+		settings := core.DefaultRuntimeSettings()
+		settings.TUN.Enabled = true
+		settings.TUN.Stack = stack
+		m := build(t, Input{Settings: settings})
+		if got := m["tun"].(map[string]any)["stack"]; got != want {
+			t.Errorf("stack %q built as %v, want %s", stack, got, want)
+		}
+	}
+}
+
 func TestOverridesApplyInOrder(t *testing.T) {
 	profile := "proxies:\n  - {name: a, type: direct}\n  - {name: b, type: direct}\nrules:\n  - MATCH,DIRECT\ndns:\n  enable: true\n  ipv6: false\n"
 	m := build(t, Input{ProfileYAML: profile, Overrides: []override.Source{

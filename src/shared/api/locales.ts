@@ -2070,9 +2070,9 @@ export interface Messages {
    */
   tunStack(): string;
   /**
-   * `Mixed uses the system stack for TCP and gVisor for UDP.`
+   * `Needs Mihomo 1.19.32 or later.`
    */
-  tunStackHint(): string;
+  tunStackMipsHint(): string;
   /**
    * `Strict route`
    */
@@ -2615,7 +2615,7 @@ const catalog = createCatalog<Messages>({
     "tunPermissionNeeded": [],
     "tunPermissionOK": [],
     "tunStack": [],
-    "tunStackHint": [],
+    "tunStackMipsHint": [],
     "tunStrict": [],
     "tunStrictHint": [],
     "tunUse": [],
@@ -3139,7 +3139,7 @@ const catalog = createCatalog<Messages>({
       "tunPermissionNeeded": "Permission needed",
       "tunPermissionOK": "Mihomo has permission",
       "tunStack": "Stack",
-      "tunStackHint": "Mixed uses the system stack for TCP and gVisor for UDP.",
+      "tunStackMipsHint": "Needs Mihomo 1.19.32 or later.",
       "tunStrict": "Strict route",
       "tunStrictHint": "Stops leaks around the TUN device.",
       "tunUse": "Use TUN",
@@ -3662,7 +3662,7 @@ const catalog = createCatalog<Messages>({
       "tunPermissionNeeded": "需要权限",
       "tunPermissionOK": "Mihomo 已获授权",
       "tunStack": "协议栈",
-      "tunStackHint": "Mixed 对 TCP 使用 system，对 UDP 使用 gVisor。",
+      "tunStackMipsHint": "需要 Mihomo 1.19.32 或更高版本。",
       "tunStrict": "严格路由",
       "tunStrictHint": "防止流量绕过 TUN 设备泄漏。",
       "tunUse": "使用 TUN",
