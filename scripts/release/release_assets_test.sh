@@ -39,11 +39,7 @@ git -C "$repo" tag -a v0.1.0 -m v0.1.0
 # A later commit must not be accepted as v0.1.0.
 echo 'x' >> "$repo/mygo.config.ts"
 git -C "$repo" commit -qam 'not the tag'
-if GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 RELEASE_TAG_COMMIT=$tag_commit \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
-  fail "a newer commit was accepted as v0.1.0"
-fi
-pass "newer commit is not v0.1.0"
+newer_commit=$(git -C "$repo" rev-parse HEAD)
 git -C "$repo" checkout -q v0.1.0
 # The update manifest is untracked build output, still visible after checkout.
 if GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" bash "$root/scripts/release/list_release_assets.sh" >/dev/null; then
@@ -72,23 +68,113 @@ else
   fail "Kumo.app was listed"
 fi
 
-out=$(GITHUB_WORKSPACE=$repo RELEASE_REF=refs/tags/v0.1.0 RELEASE_TAG_COMMIT=$tag_commit \
-  bash "$root/scripts/release/assert_release_commit.sh")
-printf '%s\n' "$out" | grep -q "source_sha=${tag_commit}" || fail "assert sha"
-printf '%s\n' "$out" | grep -q "source_tag=v0.1.0" || fail "assert tag"
-pass "annotated tag checkout matches"
-
-if GITHUB_WORKSPACE=$repo RELEASE_REF=main RELEASE_TAG_COMMIT=$tag_commit \
+if GITHUB_WORKSPACE=$repo RELEASE_REF=main \
   bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "branch ref was accepted"
 fi
 pass "only the version tag is accepted"
 
-dry=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 RELEASE_TAG_COMMIT=$tag_commit DRY_RUN=1 \
+# The published tag is an annotated tag on a remote. Exact ls-remote of that
+# ref returns the tag object only; the script must still peel it, and must
+# not write refs/tags.
+remote=$tmp/remote
+git init -q --bare "$remote"
+git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+git -C "$repo" remote add origin "$remote"
+git -C "$repo" push -q origin "$tag_commit:refs/heads/main" "refs/tags/v0.1.0:refs/tags/v0.1.0"
+tag_object=$(git --git-dir="$remote" rev-parse refs/tags/v0.1.0)
+exact=$(git ls-remote --tags "$remote" "refs/tags/v0.1.0")
+printf '%s\n' "$exact" | grep -q '\^{}' && fail "exact ls-remote peeled the annotated tag"
+printf '%s\n' "$exact" | grep -q "$tag_object" || fail "exact ls-remote missed the tag object"
+pass "exact ls-remote returns the tag object only"
+
+git -C "$repo" checkout -q --detach "$tag_commit"
+git -C "$repo" tag -d v0.1.0 >/dev/null
+before_refs=$(git -C "$repo" show-ref || true)
+out=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 bash "$root/scripts/release/assert_release_commit.sh")
+printf '%s\n' "$out" | grep -q "source_sha=${tag_commit}" || fail "remote assert sha"
+printf '%s\n' "$out" | grep -q "source_tag=v0.1.0" || fail "remote assert tag"
+printf '%s\n' "$out" | grep -q "source_tag_object=${tag_object}" || fail "remote assert object"
+after_refs=$(git -C "$repo" show-ref || true)
+[ "$before_refs" = "$after_refs" ] || fail "assert wrote a local ref"
+[ "$(git --git-dir="$remote" rev-parse refs/tags/v0.1.0)" = "$tag_object" ] || fail "remote tag object changed"
+pass "annotated tag peeled from origin without writing refs/tags"
+
+# A depth-1 checkout, as Actions uses, still peels the remote tag.
+shallow=$tmp/shallow
+git clone -q --depth 1 "file://${remote}" "$shallow"
+git -C "$shallow" tag -d v0.1.0 >/dev/null 2>&1 || true
+git -C "$shallow" checkout -q --detach "$tag_commit"
+shallow_out=$(GITHUB_WORKSPACE=$shallow RELEASE_REF=refs/tags/v0.1.0 \
+  bash "$root/scripts/release/assert_release_commit.sh")
+printf '%s\n' "$shallow_out" | grep -q "source_sha=${tag_commit}" || fail "shallow assert"
+if git -C "$shallow" show-ref --tags | grep -q .; then
+  fail "shallow checkout gained a tag"
+fi
+pass "shallow checkout peels the annotated tag"
+
+dry=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 DRY_RUN=1 \
   bash "$root/scripts/release/upload_release_assets.sh")
 printf '%s\n' "$dry" | grep -q 'dry run: not calling gh' || fail "dry run"
 printf '%s\n' "$dry" | grep -q 'Kumo 0.1.0 arm64.dmg' || fail "dry run dmg"
 pass "dry run does not call gh"
+
+git -C "$repo" checkout -q --detach "$newer_commit"
+if GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 \
+  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  fail "a newer commit was accepted from the remote tag"
+fi
+pass "newer commit is not the remote tag"
+
+missing=$tmp/missing
+git clone -q "$remote" "$missing"
+git --git-dir="$missing/.git" tag -d v0.1.0 >/dev/null
+git --git-dir="$remote" update-ref -d refs/tags/v0.1.0
+if GITHUB_WORKSPACE=$missing RELEASE_REF=v0.1.0 \
+  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  fail "missing tag was accepted"
+fi
+pass "missing tag is rejected"
+git --git-dir="$remote" update-ref refs/tags/v0.1.0 "$tag_object"
+
+light=$tmp/light
+git init -q --bare "$light/bare"
+git clone -q "$remote" "$light/src"
+git -C "$light/src" remote set-url origin "$light/bare"
+git -C "$light/src" push -q origin "$tag_commit:refs/heads/main"
+git -C "$light/src" tag lighthead "$tag_commit"
+git -C "$light/src" push -q origin "refs/tags/lighthead:refs/tags/v0.1.0"
+git -C "$light/src" checkout -q --detach "$tag_commit"
+if GITHUB_WORKSPACE=$light/src RELEASE_REF=v0.1.0 \
+  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  fail "lightweight tag was accepted"
+fi
+pass "lightweight tag is rejected"
+
+# The real annotated v0.1.0 tag. Read-only: a temporary clone fetches it and
+# must not change the published tag object.
+project_origin=$(git -C "$root" remote get-url origin)
+real=$tmp/real
+git init -q "$real"
+git -C "$real" remote add origin "$project_origin"
+git -C "$real" fetch -q --depth 1 origin 9d299814c3ca6f4d4c937966044d2ec4a8455a97
+git -C "$real" checkout -q --detach FETCH_HEAD
+real_out=$(GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 bash "$root/scripts/release/assert_release_commit.sh")
+printf '%s\n' "$real_out" | grep -q "source_sha=9d299814c3ca6f4d4c937966044d2ec4a8455a97" || fail "real tag sha"
+printf '%s\n' "$real_out" | grep -q "source_tag_object=8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201" || fail "real tag object"
+if git -C "$real" show-ref --tags | grep -q .; then
+  fail "real check created a local tag"
+fi
+git -C "$real" fetch -q --depth 1 origin main
+git -C "$real" checkout -q --detach FETCH_HEAD
+if GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 \
+  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  fail "main was accepted as v0.1.0"
+fi
+published=$(git ls-remote --tags "$project_origin" "refs/tags/v0.1.0")
+printf '%s\n' "$published" | grep -q '^8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201[[:space:]]refs/tags/v0.1.0$' || fail "published tag object changed"
+printf '%s\n' "$published" | grep -q '\^{}' && fail "published exact ls-remote grew a peel line" || true
+pass "real v0.1.0 peels to 9d299814 and the tag object is unchanged"
 
 # Different Linux install scripts are not one release asset.
 printf 'other\n' > "$repo/build/linux-arm64/install.sh"
