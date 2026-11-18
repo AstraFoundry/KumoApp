@@ -36,6 +36,7 @@ WebKitGTK. It runs the app with `KUMO_HOME`, `KUMO_SYSTEM_PROXY=file:…` and
    proxy in place.
 5. Another program holds the mixed port → the dialog names it, nothing
    starts until *Use free ports*, then the core runs on the next free port.
+   The system proxy follows that port, and quitting clears it.
 
 ## Test Seams
 

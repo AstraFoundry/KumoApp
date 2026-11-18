@@ -8,7 +8,9 @@
 #   4. when another app takes the proxy over, shows it and leaves it alone,
 #      also on quit;
 #   5. when another program holds its port, says who and starts on a free
-#      one only when asked.
+#      one only when asked. The system proxy follows that port before quit
+#      is checked: status becomes "running" when the process launches,
+#      which is before the proxy is applied.
 #
 # Usage: scripts/e2e/lifecycle.sh <mihomo> [app binary]
 # Needs Xvfb, dbus-run-session and a WebKitGTK runtime.
@@ -156,6 +158,10 @@ eval_js 'document.querySelector("[data-e2e=use-free-ports]").click(); return 1' 
 wait_for "core runs on a free port" core_running
 moved=$(kumo status | field "['data']['mixedPort']")
 [ "$moved" != "$MIXED" ] && pass "mixed port moved to $moved" || fail "mixed port moved"
+# Running is recorded when the process launches, before the system proxy
+# is pointed at the new port. Wait for that write so quit is judged on a
+# proxy Kumo owns, not on the previous app's settings.
+wait_for "system proxy follows the free port" grep -q "\"port\": $moved" "$PROXY"
 kill "$SQUATTER"
 kill -TERM "$APP_PID"
 wait_for "app exits" app_gone
