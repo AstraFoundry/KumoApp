@@ -68,6 +68,9 @@ fi
 pass "installers listed, app bundles and binaries omitted"
 if ! printf '%s\n' "$listed" | grep -q 'Kumo.app'; then
   pass "Kumo.app is not an upload"
+else
+  fail "Kumo.app was listed"
+fi
 
 # One platform at a time. The macOS runner builds only darwin directories;
 # Bash 3.2 aborted there on an empty Linux array. Linux-only is the other
@@ -157,10 +160,6 @@ if grep -n -E '=\(\)|\[@\]' \
 fi
 pass "release scripts do not expand arrays"
 
-else
-  fail "Kumo.app was listed"
-fi
-
 if GITHUB_WORKSPACE=$repo RELEASE_REF=main \
   "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "branch ref was accepted"
@@ -193,18 +192,22 @@ after_refs=$(git -C "$repo" show-ref || true)
 [ "$(git --git-dir="$remote" rev-parse refs/tags/v0.1.0)" = "$tag_object" ] || fail "remote tag object changed"
 pass "annotated tag peeled from origin without writing refs/tags"
 
-# A depth-1 checkout, as Actions uses, still peels the remote tag.
+# A depth-1 checkout still proves the tag, and the proof does not rewrite
+# its shallow file.
 shallow=$tmp/shallow
 git clone -q --depth 1 "file://${remote}" "$shallow"
 git -C "$shallow" tag -d v0.1.0 >/dev/null 2>&1 || true
 git -C "$shallow" checkout -q --detach "$tag_commit"
+shallow_before=$(cat "$shallow/.git/shallow" 2>/dev/null || true)
 shallow_out=$(GITHUB_WORKSPACE=$shallow RELEASE_REF=refs/tags/v0.1.0 \
   "$shell" "$root/scripts/release/assert_release_commit.sh")
+shallow_after=$(cat "$shallow/.git/shallow" 2>/dev/null || true)
 printf '%s\n' "$shallow_out" | grep -q "source_sha=${tag_commit}" || fail "shallow assert"
+[ "$shallow_before" = "$shallow_after" ] || fail "shallow file changed"
 if git -C "$shallow" show-ref --tags | grep -q .; then
   fail "shallow checkout gained a tag"
 fi
-pass "shallow checkout peels the annotated tag"
+pass "shallow checkout peels the tag without changing the shallow file"
 
 dry=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 DRY_RUN=1 \
   "$shell" "$root/scripts/release/upload_release_assets.sh")
@@ -244,30 +247,49 @@ if GITHUB_WORKSPACE=$light/src RELEASE_REF=v0.1.0 \
 fi
 pass "lightweight tag is rejected"
 
-# The real annotated v0.1.0 tag. Read-only: a temporary clone fetches it and
-# must not change the published tag object.
+# Read-only proof of the published tag. No fetch and no shallow file.
+# Each attempt is logged on its own so a failure names that read.
 project_origin=$(git -C "$root" remote get-url origin)
-real=$tmp/real
-git init -q "$real"
-git -C "$real" remote add origin "$project_origin"
-git -C "$real" fetch -q --depth 1 origin 9d299814c3ca6f4d4c937966044d2ec4a8455a97
-git -C "$real" checkout -q --detach FETCH_HEAD
-real_out=$(GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 "$shell" "$root/scripts/release/assert_release_commit.sh")
-printf '%s\n' "$real_out" | grep -q "source_sha=9d299814c3ca6f4d4c937966044d2ec4a8455a97" || fail "real tag sha"
-printf '%s\n' "$real_out" | grep -q "source_tag_object=8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201" || fail "real tag object"
-if git -C "$real" show-ref --tags | grep -q .; then
-  fail "real check created a local tag"
-fi
-git -C "$real" fetch -q --depth 1 origin main
-git -C "$real" checkout -q --detach FETCH_HEAD
-if GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 \
+live_attempt() {
+  n=$1
+  echo "live ls-remote attempt ${n}"
+  if ! listing=$(git ls-remote "$project_origin" "refs/tags/v0.1.0" "refs/tags/v0.1.0^{}"); then
+    echo "live ls-remote attempt ${n} command failed" >&2
+    fail "live ls-remote ${n}"
+  fi
+  printf 'attempt %s raw:\n%s\n' "$n" "$listing"
+  pointer=$(printf '%s\n' "$listing" | awk -v want="refs/tags/v0.1.0" '$2 == want { print $1 }')
+  peeled=$(printf '%s\n' "$listing" | awk -v want="refs/tags/v0.1.0^{}" '$2 == want { print $1 }')
+  if [ "$pointer" != "8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201" ] || \
+     [ "$peeled" != "9d299814c3ca6f4d4c937966044d2ec4a8455a97" ]; then
+    echo "live ls-remote attempt ${n} unexpected" >&2
+    fail "live ls-remote ${n} values"
+  fi
+}
+n=1
+while [ "$n" -le 5 ]; do
+  live_attempt "$n"
+  n=$((n + 1))
+done
+pass "five read-only ls-remote reads match the v0.1.0 object and commit"
+
+probe=$tmp/probe
+git init -q "$probe"
+git -C "$probe" remote add origin "$project_origin"
+printf '9d299814c3ca6f4d4c937966044d2ec4a8455a97\n' > "$probe/.git/HEAD"
+printf '  version: "0.1.0",\n' > "$probe/mygo.config.ts"
+probe_out=$(GITHUB_WORKSPACE=$probe RELEASE_REF=v0.1.0 "$shell" "$root/scripts/release/assert_release_commit.sh")
+printf '%s\n' "$probe_out" | grep -q "source_sha=9d299814c3ca6f4d4c937966044d2ec4a8455a97" || fail "probe sha"
+printf '%s\n' "$probe_out" | grep -q "source_tag_object=8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201" || fail "probe object"
+[ ! -f "$probe/.git/shallow" ] || fail "probe created a shallow file"
+pass "production check accepts v0.1.0 without fetching"
+
+printf '4d4981e52eaced7ec6401c57221d2c731967c9db\n' > "$probe/.git/HEAD"
+if GITHUB_WORKSPACE=$probe RELEASE_REF=v0.1.0 \
   "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
-  fail "main was accepted as v0.1.0"
+  fail "another commit was accepted for the published tag"
 fi
-published=$(git ls-remote --tags "$project_origin" "refs/tags/v0.1.0")
-printf '%s\n' "$published" | grep -q '^8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201[[:space:]]refs/tags/v0.1.0$' || fail "published tag object changed"
-printf '%s\n' "$published" | grep -q '\^{}' && fail "published exact ls-remote grew a peel line" || true
-pass "real v0.1.0 peels to 9d299814 and the tag object is unchanged"
+pass "production check rejects a different commit for v0.1.0"
 
 # Different Linux install scripts are not one release asset.
 printf 'other\n' > "$repo/build/linux-arm64/install.sh"
