@@ -4,6 +4,10 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 workflow=$root/.github/workflows/build-release.yml
+# Child scripts use this interpreter. Running the suite with Bash 3.2
+# therefore executes the release scripts with Bash 3.2, not the system bash.
+shell=$BASH
+echo "release script tests under ${shell} ($("$shell" -c 'echo "$BASH_VERSION"'))"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -42,12 +46,12 @@ git -C "$repo" commit -qam 'not the tag'
 newer_commit=$(git -C "$repo" rev-parse HEAD)
 git -C "$repo" checkout -q v0.1.0
 # The update manifest is untracked build output, still visible after checkout.
-if GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" bash "$root/scripts/release/list_release_assets.sh" >/dev/null; then
+if GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" "$shell" "$root/scripts/release/list_release_assets.sh" >/dev/null; then
   fail "update manifest was listed"
 fi
 pass "update manifests are refused"
 rm "$repo/build/linux-amd64/update-linux-amd64.json"
-listed=$(GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" bash "$root/scripts/release/list_release_assets.sh")
+listed=$(GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" "$shell" "$root/scripts/release/list_release_assets.sh")
 expect=$'build/linux-amd64/kumo_0.1.0_amd64.deb
 build/linux-amd64/kumo-0.1.0-linux-amd64.tar.gz
 build/linux-arm64/kumo_0.1.0_arm64.deb
@@ -64,12 +68,101 @@ fi
 pass "installers listed, app bundles and binaries omitted"
 if ! printf '%s\n' "$listed" | grep -q 'Kumo.app'; then
   pass "Kumo.app is not an upload"
+
+# One platform at a time. The macOS runner builds only darwin directories;
+# Bash 3.2 aborted there on an empty Linux array. Linux-only is the other
+# job. An empty tree and a platform missing its installer must fail.
+write_config() {
+  cat > "$1/mygo.config.ts" <<'EOF'
+export default {
+  name: "Kumo",
+  version: "0.1.0",
+}
+EOF
+}
+list_of() {
+  GITHUB_WORKSPACE=$1 BUILD_DIR=$2 "$shell" "$root/scripts/release/list_release_assets.sh"
+}
+
+donly=$tmp/darwin-only
+mkdir -p "$donly/build/darwin-arm64" "$donly/build/darwin-amd64"
+write_config "$donly"
+printf 'arm\n' > "$donly/build/darwin-arm64/Kumo 0.1.0 arm64.dmg"
+printf 'amd\n' > "$donly/build/darwin-amd64/Kumo 0.1.0 amd64.dmg"
+mkdir -p "$donly/build/darwin-arm64/Kumo.app" "$donly/build/darwin-amd64/Kumo.app"
+dlisted=$(list_of "$donly" "$donly/build")
+dexpect=$'build/darwin-amd64/Kumo 0.1.0 amd64.dmg
+build/darwin-arm64/Kumo 0.1.0 arm64.dmg'
+dgot=$(printf '%s\n' "$dlisted" | sed "s|^$donly/||")
+if [ "$dgot" != "$dexpect" ]; then
+  printf 'darwin-only:\n%s\n' "$dgot" >&2
+  fail "darwin-only list"
+fi
+pass "darwin-only lists both disk images"
+
+lonly=$tmp/linux-only
+mkdir -p "$lonly/build/linux-amd64" "$lonly/build/linux-arm64"
+write_config "$lonly"
+for arch in amd64 arm64; do
+  printf 'deb\n' > "$lonly/build/linux-${arch}/kumo_0.1.0_${arch}.deb"
+  printf 'tar\n' > "$lonly/build/linux-${arch}/kumo-0.1.0-linux-${arch}.tar.gz"
+  printf 'install\n' > "$lonly/build/linux-${arch}/install.sh"
+  printf 'bin\n' > "$lonly/build/linux-${arch}/kumo"
+done
+llisted=$(list_of "$lonly" "$lonly/build")
+lexpect=$'build/linux-amd64/kumo_0.1.0_amd64.deb
+build/linux-amd64/kumo-0.1.0-linux-amd64.tar.gz
+build/linux-arm64/kumo_0.1.0_arm64.deb
+build/linux-arm64/kumo-0.1.0-linux-arm64.tar.gz
+build/linux-amd64/install.sh'
+lgot=$(printf '%s\n' "$llisted" | sed "s|^$lonly/||")
+if [ "$lgot" != "$lexpect" ]; then
+  printf 'linux-only:\n%s\n' "$lgot" >&2
+  fail "linux-only list"
+fi
+pass "linux-only lists deb, archive, and one install.sh"
+
+empty=$tmp/empty
+mkdir -p "$empty/build"
+write_config "$empty"
+if list_of "$empty" "$empty/build" >/dev/null; then
+  fail "empty build was accepted"
+fi
+pass "empty build is rejected"
+
+nodmg=$tmp/no-dmg
+mkdir -p "$nodmg/build/darwin-arm64"
+write_config "$nodmg"
+if list_of "$nodmg" "$nodmg/build" >/dev/null; then
+  fail "darwin directory without a disk image was accepted"
+fi
+pass "missing disk image is rejected"
+
+badmix=$tmp/bad-mix
+mkdir -p "$badmix/build/linux-amd64" "$badmix/build/darwin-arm64"
+write_config "$badmix"
+printf 'deb\n' > "$badmix/build/linux-amd64/kumo_0.1.0_amd64.deb"
+printf 'tar\n' > "$badmix/build/linux-amd64/kumo-0.1.0-linux-amd64.tar.gz"
+printf 'install\n' > "$badmix/build/linux-amd64/install.sh"
+if list_of "$badmix" "$badmix/build" >/dev/null; then
+  fail "linux plus a darwin directory without its disk image was accepted"
+fi
+pass "mixed output with a missing disk image is rejected"
+
+if grep -n -E '=\(\)|\[@\]' \
+  "$root/scripts/release/list_release_assets.sh" \
+  "$root/scripts/release/upload_release_assets.sh" \
+  "$root/scripts/release/assert_release_commit.sh"; then
+  fail "an array expansion returned to a release script"
+fi
+pass "release scripts do not expand arrays"
+
 else
   fail "Kumo.app was listed"
 fi
 
 if GITHUB_WORKSPACE=$repo RELEASE_REF=main \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "branch ref was accepted"
 fi
 pass "only the version tag is accepted"
@@ -91,7 +184,7 @@ pass "exact ls-remote returns the tag object only"
 git -C "$repo" checkout -q --detach "$tag_commit"
 git -C "$repo" tag -d v0.1.0 >/dev/null
 before_refs=$(git -C "$repo" show-ref || true)
-out=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 bash "$root/scripts/release/assert_release_commit.sh")
+out=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 "$shell" "$root/scripts/release/assert_release_commit.sh")
 printf '%s\n' "$out" | grep -q "source_sha=${tag_commit}" || fail "remote assert sha"
 printf '%s\n' "$out" | grep -q "source_tag=v0.1.0" || fail "remote assert tag"
 printf '%s\n' "$out" | grep -q "source_tag_object=${tag_object}" || fail "remote assert object"
@@ -106,7 +199,7 @@ git clone -q --depth 1 "file://${remote}" "$shallow"
 git -C "$shallow" tag -d v0.1.0 >/dev/null 2>&1 || true
 git -C "$shallow" checkout -q --detach "$tag_commit"
 shallow_out=$(GITHUB_WORKSPACE=$shallow RELEASE_REF=refs/tags/v0.1.0 \
-  bash "$root/scripts/release/assert_release_commit.sh")
+  "$shell" "$root/scripts/release/assert_release_commit.sh")
 printf '%s\n' "$shallow_out" | grep -q "source_sha=${tag_commit}" || fail "shallow assert"
 if git -C "$shallow" show-ref --tags | grep -q .; then
   fail "shallow checkout gained a tag"
@@ -114,14 +207,14 @@ fi
 pass "shallow checkout peels the annotated tag"
 
 dry=$(GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 DRY_RUN=1 \
-  bash "$root/scripts/release/upload_release_assets.sh")
+  "$shell" "$root/scripts/release/upload_release_assets.sh")
 printf '%s\n' "$dry" | grep -q 'dry run: not calling gh' || fail "dry run"
 printf '%s\n' "$dry" | grep -q 'Kumo 0.1.0 arm64.dmg' || fail "dry run dmg"
 pass "dry run does not call gh"
 
 git -C "$repo" checkout -q --detach "$newer_commit"
 if GITHUB_WORKSPACE=$repo RELEASE_REF=v0.1.0 \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "a newer commit was accepted from the remote tag"
 fi
 pass "newer commit is not the remote tag"
@@ -131,7 +224,7 @@ git clone -q "$remote" "$missing"
 git --git-dir="$missing/.git" tag -d v0.1.0 >/dev/null
 git --git-dir="$remote" update-ref -d refs/tags/v0.1.0
 if GITHUB_WORKSPACE=$missing RELEASE_REF=v0.1.0 \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "missing tag was accepted"
 fi
 pass "missing tag is rejected"
@@ -146,7 +239,7 @@ git -C "$light/src" tag lighthead "$tag_commit"
 git -C "$light/src" push -q origin "refs/tags/lighthead:refs/tags/v0.1.0"
 git -C "$light/src" checkout -q --detach "$tag_commit"
 if GITHUB_WORKSPACE=$light/src RELEASE_REF=v0.1.0 \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "lightweight tag was accepted"
 fi
 pass "lightweight tag is rejected"
@@ -159,7 +252,7 @@ git init -q "$real"
 git -C "$real" remote add origin "$project_origin"
 git -C "$real" fetch -q --depth 1 origin 9d299814c3ca6f4d4c937966044d2ec4a8455a97
 git -C "$real" checkout -q --detach FETCH_HEAD
-real_out=$(GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 bash "$root/scripts/release/assert_release_commit.sh")
+real_out=$(GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 "$shell" "$root/scripts/release/assert_release_commit.sh")
 printf '%s\n' "$real_out" | grep -q "source_sha=9d299814c3ca6f4d4c937966044d2ec4a8455a97" || fail "real tag sha"
 printf '%s\n' "$real_out" | grep -q "source_tag_object=8f8e68ea9f3bb821d0bb5fa1e9c1015b04b99201" || fail "real tag object"
 if git -C "$real" show-ref --tags | grep -q .; then
@@ -168,7 +261,7 @@ fi
 git -C "$real" fetch -q --depth 1 origin main
 git -C "$real" checkout -q --detach FETCH_HEAD
 if GITHUB_WORKSPACE=$real RELEASE_REF=v0.1.0 \
-  bash "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
+  "$shell" "$root/scripts/release/assert_release_commit.sh" >/dev/null; then
   fail "main was accepted as v0.1.0"
 fi
 published=$(git ls-remote --tags "$project_origin" "refs/tags/v0.1.0")
@@ -178,7 +271,7 @@ pass "real v0.1.0 peels to 9d299814 and the tag object is unchanged"
 
 # Different Linux install scripts are not one release asset.
 printf 'other\n' > "$repo/build/linux-arm64/install.sh"
-if GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" bash "$root/scripts/release/list_release_assets.sh" >/dev/null; then
+if GITHUB_WORKSPACE=$repo BUILD_DIR="$repo/build" "$shell" "$root/scripts/release/list_release_assets.sh" >/dev/null; then
   fail "differing install.sh was accepted"
 fi
 pass "linux install.sh must be identical"
