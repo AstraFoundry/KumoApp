@@ -10,11 +10,11 @@ name: Build and Release
 # mygo build -upload is not used. It stops before compiling unless
 # updates.github or updates.s3 is set, and this release leaves updates off.
 #
-# The tag check fetches the annotated tag from origin and peels it locally.
-# `git ls-remote --tags origin refs/tags/v0.1.0` returns only the tag object,
-# not the commit. The fetch uses a temporary ref and does not write refs/tags.
-# Asset scripts run under the runner's /bin/bash, which is Bash 3.2 on macOS.
-# They must not expand an empty array: set -u treats that as unbound there.
+# The tag check is read-only. An exact ls-remote of an annotated tag returns
+# only the tag object; the peeled commit is the separate refs/tags/<tag>^{}
+# line. The check does not fetch, so a depth-1 checkout's shallow file stays
+# untouched. Asset scripts run under the runner's /bin/bash, which is Bash
+# 3.2 on macOS, and do not expand empty arrays.
 
 on:
   push:

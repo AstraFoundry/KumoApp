@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Confirm this checkout is the annotated tag named by mygo.config.ts.
 #
-# RELEASE_REF is that tag (vX.Y.Z or refs/tags/vX.Y.Z). The tag is fetched
-# from origin into a temporary ref outside refs/tags. An exact
-# `git ls-remote --tags origin refs/tags/<tag>` returns only the tag object
-# for an annotated tag, not the peeled commit, so the commit is read with
-# git rev-parse on the fetched tag object. The published tag is not created,
-# moved, or deleted. A lightweight tag is rejected.
+# The proof is read-only. git ls-remote prints refs/tags/<tag> as the tag
+# object. Asking for that name alone does not print the peeled commit;
+# refs/tags/<tag>^{} does, and only for an annotated tag. Nothing is fetched
+# and the shallow file of a depth-1 Actions checkout is not touched.
 set -euo pipefail
 
 cd "${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}"
@@ -24,25 +22,21 @@ if [ "$ref" != "$tag" ]; then
   exit 1
 fi
 
-check=refs/kumo-release-check/${tag}
-cleanup() {
-  git update-ref -d "$check" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-
-if ! git fetch --quiet --no-tags origin "refs/tags/${tag}:${check}"; then
+if ! listing=$(git ls-remote origin "refs/tags/${tag}" "refs/tags/${tag}^{}"); then
+  status=$?
+  echo "git ls-remote failed for ${tag} (exit ${status})" >&2
+  exit "$status"
+fi
+pointer=$(printf '%s\n' "$listing" | awk -v want="refs/tags/${tag}" '$2 == want { print $1 }')
+peeled=$(printf '%s\n' "$listing" | awk -v want="refs/tags/${tag}^{}" '$2 == want { print $1 }')
+if [ -z "$pointer" ]; then
   echo "origin has no tag ${tag}" >&2
+  printf 'ls-remote output:\n%s\n' "$listing" >&2
   exit 1
 fi
-kind=$(git cat-file -t "$check")
-if [ "$kind" != tag ]; then
-  echo "tag ${tag} on origin is ${kind}, not an annotated tag" >&2
-  exit 1
-fi
-pointer=$(git rev-parse "$check")
-peeled=$(git rev-parse "${check}^{commit}")
 if [ -z "$peeled" ] || [ "$pointer" = "$peeled" ]; then
-  echo "annotated tag ${tag} did not peel to a commit" >&2
+  echo "tag ${tag} on origin is not annotated" >&2
+  printf 'ls-remote output:\n%s\n' "$listing" >&2
   exit 1
 fi
 
