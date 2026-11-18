@@ -4,6 +4,10 @@
 # This is the set mygo build -upload would attach, without update manifests
 # or deltas. The updater stays off, so those files are refused. Directories
 # such as Kumo.app are not listed; the disk image contains the app.
+#
+# Bash 3.2, the macOS runner's /bin/bash, treats an empty array expansion as
+# an unbound variable under set -u. This script does not use arrays. A
+# platform the build did not produce simply does not enter its loop.
 set -euo pipefail
 
 cd "${GITHUB_WORKSPACE:-$(git rev-parse --show-toplevel)}"
@@ -30,33 +34,19 @@ if find "$build" -type f \( -name 'update-*.json' -o -name '*.delta' \) | grep -
   exit 1
 fi
 
-files=()
-require() {
-  if [ ! -f "$1" ]; then
-    echo "missing release asset $1" >&2
-    exit 1
-  fi
-  files+=("$1")
-}
-
-shopt -s nullglob
-linux=( "$build"/linux-* )
-darwin=( "$build"/darwin-* )
-shopt -u nullglob
-if [ ${#linux[@]} -eq 0 ] && [ ${#darwin[@]} -eq 0 ]; then
-  echo "no linux or darwin build under ${build}" >&2
-  exit 1
-fi
-
+saw=0
 install_script=
-for dir in "${linux[@]}"; do
+shopt -s nullglob
+for dir in "$build"/linux-*; do
+  [ -d "$dir" ] || continue
+  saw=1
   arch=${dir##*-}
-  require "${dir}/${slug}_${version}_${arch}.deb"
-  require "${dir}/${slug}-${version}-linux-${arch}.tar.gz"
-  if [ ! -f "${dir}/install.sh" ]; then
-    echo "missing ${dir}/install.sh" >&2
-    exit 1
-  fi
+  deb="${dir}/${slug}_${version}_${arch}.deb"
+  archive="${dir}/${slug}-${version}-linux-${arch}.tar.gz"
+  [ -f "$deb" ] || { echo "missing release asset ${deb}" >&2; exit 1; }
+  [ -f "$archive" ] || { echo "missing release asset ${archive}" >&2; exit 1; }
+  [ -f "${dir}/install.sh" ] || { echo "missing ${dir}/install.sh" >&2; exit 1; }
+  printf '%s\n' "$deb" "$archive"
   if [ -z "$install_script" ]; then
     install_script=${dir}/install.sh
   elif ! cmp -s "$install_script" "${dir}/install.sh"; then
@@ -65,16 +55,22 @@ for dir in "${linux[@]}"; do
   fi
 done
 if [ -n "$install_script" ]; then
-  files+=("$install_script")
+  printf '%s\n' "$install_script"
 fi
-
-for dir in "${darwin[@]}"; do
+for dir in "$build"/darwin-*; do
+  [ -d "$dir" ] || continue
+  saw=1
   arch=${dir##*-}
   if [ "$arch" = universal ]; then
-    require "${dir}/${name} ${version}.dmg"
+    dmg="${dir}/${name} ${version}.dmg"
   else
-    require "${dir}/${name} ${version} ${arch}.dmg"
+    dmg="${dir}/${name} ${version} ${arch}.dmg"
   fi
+  [ -f "$dmg" ] || { echo "missing release asset ${dmg}" >&2; exit 1; }
+  printf '%s\n' "$dmg"
 done
-
-printf '%s\n' "${files[@]}"
+shopt -u nullglob
+if [ "$saw" -eq 0 ]; then
+  echo "no linux or darwin build under ${build}" >&2
+  exit 1
+fi

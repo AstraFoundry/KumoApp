@@ -13,6 +13,8 @@ name: Build and Release
 # The tag check fetches the annotated tag from origin and peels it locally.
 # `git ls-remote --tags origin refs/tags/v0.1.0` returns only the tag object,
 # not the commit. The fetch uses a temporary ref and does not write refs/tags.
+# Asset scripts run under the runner's /bin/bash, which is Bash 3.2 on macOS.
+# They must not expand an empty array: set -u treats that as unbound there.
 
 on:
   push:
