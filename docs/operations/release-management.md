@@ -24,7 +24,22 @@ prefix (`v0.1.0`). Releases of the Swift app were tagged without it
 2. `make check`, then `make e2e MIHOMO=<path>` on Linux.
 3. Commit, `git tag vX.Y.Z`, `git push origin vX.Y.Z`.
 4. `.github/workflows/build-release.yml` tests, creates a draft release,
-   builds macOS and Linux and uploads to the draft. Review and publish it.
+   builds macOS and Linux and uploads the installers to the draft with
+   `gh release upload`. Review and publish it.
+
+`mygo build -upload` is not used. That flag stops before compiling unless
+`updates.github` or `updates.s3` is set, and releases keep updates off.
+The draft receives the disk images, the `.deb` packages, the `.tar.gz`
+archives and one `install.sh`. `Kumo.app` stays inside its disk image.
+There are no update manifests.
+
+A tag push runs the workflow file stored on that tag. Rebuilding a tag
+that does not contain this upload step is a `workflow_dispatch` of a
+branch that does, with `ref` set to the tag. The job checks out that tag,
+refuses any other commit, and uploads to the tag's existing draft. It
+does not create the tag, move it, or publish the release. The run's
+workflow commit and the compiled commit are both printed; they differ
+when the workflow fix is not part of the tag.
 
 ## Updates
 
